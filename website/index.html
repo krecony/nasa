@@ -1,72 +1,650 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Earth Jukebox</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%233b6fd8'/%3E%3Cpath d='M6 18c4-6 8 2 12-3s6-2 8 0' stroke='%232a9d4a' stroke-width='4' fill='none'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="css/style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Earth Jukebox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@500;600&display=swap">
+<style>
+  html, body { margin: 0; height: 100%; background: #5b8fbd; }
+  .hero { position: relative; width: 100%; height: 100vh; height: 100svh; min-height: 560px; overflow: hidden; background: #5b8fbd; touch-action: none; font-family: Inter, system-ui, sans-serif; }
+  .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .hero main { position: relative; height: 100%; box-sizing: border-box; padding: 0 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 44px; text-align: center; }
+  .hero h1 { margin: 0; max-width: 12ch; font-family: 'Bricolage Grotesque', Inter, sans-serif; font-weight: 800; font-size: clamp(3.5rem, 10.5vw, 10.5rem); line-height: 0.9; letter-spacing: -0.04em; color: #F3EEE0; text-shadow: 0 2px 6px rgba(10,30,20,0.35), 0 8px 48px rgba(10,30,20,0.6); }
+  .cta { display: inline-flex; align-items: center; gap: 12px; height: 60px; padding: 0 30px 0 34px; border: 0; border-radius: 999px; background: #F3EEE0; color: #10201F; font: 600 18px/1 Inter, system-ui, sans-serif; letter-spacing: -0.01em; text-decoration: none; cursor: pointer; box-shadow: 0 10px 30px rgba(4,12,16,0.35); transition: background-color .2s ease, transform .2s ease, box-shadow .2s ease; }
+  .cta:hover { background: #fff; transform: translateY(-2px); box-shadow: 0 14px 36px rgba(4,12,16,0.45); }
+  .cta:active { transform: translateY(0); }
+  .cta svg { transition: transform .2s ease; }
+  .cta:hover svg { transform: translateX(3px); }
+  .snd { position: absolute; right: 24px; bottom: 24px; display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 18px 0 14px; border-radius: 999px; border: 1px solid rgba(243,238,224,0.28); background: rgba(11,24,32,0.55); color: #F3EEE0; font: 500 14px/1 Inter, system-ui, sans-serif; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+  .snd:hover { background: rgba(11,24,32,0.8); border-color: rgba(243,238,224,0.5); }
+  .snd .on { display: none; }
+  .snd[aria-pressed="true"] .on { display: inline; }
+  .snd[aria-pressed="true"] .off { display: none; }
+  .cta:focus-visible, .snd:focus-visible { outline: 3px solid #F2B872; outline-offset: 4px; }
+</style>
 </head>
 <body>
-  <a class="skip-link" href="#player">Skip to player</a>
-
-  <header>
-    <h1>Earth Jukebox</h1>
-    <p class="tagline">NASA's views of our changing planet, turned into sound.</p>
-  </header>
-
+<div class="hero" id="hero">
+  <canvas id="forest" aria-hidden="true"></canvas>
   <main>
-    <nav aria-labelledby="tracks-heading" class="tracks">
-      <h2 id="tracks-heading">Tracks</h2>
-      <ul id="track-list"></ul>
-    </nav>
-
-    <section id="player" aria-labelledby="track-title" class="player">
-      <h2 id="track-title">Loading…</h2>
-      <p id="track-source" class="source"></p>
-
-      <video id="video" controls loop playsinline preload="metadata"
-             aria-describedby="description">
-        <track id="captions" kind="captions" srclang="en" label="What you're hearing" default>
-      </video>
-
-      <div class="controls">
-        <button type="button" id="play" aria-pressed="false">Play</button>
-        <label class="toggle">
-          <input type="checkbox" id="announce" checked>
-          Read the daily descriptions to screen readers
-        </label>
-      </div>
-
-      <!-- Screen readers announce each day's description here while playing -->
-      <p id="status" class="status" role="status" aria-live="polite"></p>
-
-      <h3>What the picture shows</h3>
-      <p id="description"></p>
-
-      <h3>How to listen</h3>
-      <ul id="guide"></ul>
-    </section>
-
-    <details class="engine">
-      <summary>How the sound is made</summary>
-      <p>
-        A Python script reads every frame of the video and turns the colors back into
-        numbers using the map's own color bar (for example, this shade of yellow = 2 mm of
-        rain per hour). It then measures how much rain and snow there is, where it is,
-        and how heavy, and turns those numbers into music.
-      </p>
-      <figure>
-        <img id="features-image" alt="Graphs of the numbers extracted from the video over time: share of the globe covered by rain and snow, share with heavy rain, rain by longitude, and how much the map changes between frames.">
-        <figcaption>The numbers behind the sound. Grey lines mark the start of each day.</figcaption>
-      </figure>
-    </details>
+    <h1>Earth Jukebox</h1>
+    <!-- Change href to the page the button should open -->
+    <a class="cta" href="index2.html">Check it out<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></a>
   </main>
+  <button type="button" class="snd" id="sound" aria-pressed="false">
+    <svg class="on" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+    <svg class="off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M22 9l-6 6"/><path d="M16 9l6 6"/></svg>
+    <span>Sound off</span>
+  </button>
+</div>
 
-  <footer>
-    <p>Visualizations: NASA Scientific Visualization Studio / Earth Information Center. Sonification: Earth Jukebox team.</p>
-  </footer>
+<script>
+(function () {
+  // ---- Settings you can change ----
+  var opts = {
+    treeCount: 4500,   // fewer = smoother on slow computers
+    windStrength: 1,   // 0.2 - 2.5
+    volume: 0.5        // 0 - 1
+  };
 
-  <script src="js/main.js" type="module"></script>
+  function startForest(canvas, opts) {
+    const gl = canvas.getContext('webgl2', { antialias: true, alpha: false, powerPreference: 'high-performance' });
+    if (!gl) return { stop() {}, setSound() {}, hoverSound() {} };
+    const root = canvas.parentElement || canvas;
+    const reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+    // ---------- seeded random ----------
+    let seed = 20261114;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+    const rr = (a, b) => a + (b - a) * rnd();
+    const hex = (h) => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
+
+    // ---------- low-poly tree template (height 0..1) ----------
+    const V = [];
+    const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+    const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    const nrm = (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+    const put = (arr, p, n, c, leaf) => { arr.push(p[0], p[1], p[2], n[0], n[1], n[2], c[0], c[1], c[2], leaf); };
+    const tri = (arr, a, b, c, col, leaf, hint) => {
+      let n = nrm(cross(sub(b, a), sub(c, a)));
+      if (n[0] * hint[0] + n[1] * hint[1] + n[2] * hint[2] < 0) n = [-n[0], -n[1], -n[2]];
+      put(arr, a, n, col, leaf); put(arr, b, n, col, leaf); put(arr, c, n, col, leaf);
+    };
+
+    const bark = hex('#3a2c22');
+    const TS = 5;
+    for (let i = 0; i < TS; i++) {
+      const a0 = (i / TS) * Math.PI * 2, a1 = ((i + 1) / TS) * Math.PI * 2, am = (a0 + a1) / 2;
+      const p0 = [Math.cos(a0) * 0.045, 0, Math.sin(a0) * 0.045];
+      const p1 = [Math.cos(a1) * 0.045, 0, Math.sin(a1) * 0.045];
+      const q0 = [Math.cos(a0) * 0.028, 0.42, Math.sin(a0) * 0.028];
+      const q1 = [Math.cos(a1) * 0.028, 0.42, Math.sin(a1) * 0.028];
+      const hint = [Math.cos(am), 0, Math.sin(am)];
+      tri(V, p0, p1, q1, bark, 0, hint);
+      tri(V, p0, q1, q0, bark, 0, hint);
+    }
+    const layers = [
+      { b: 0.15, t: 0.62, r: 0.36, col: '#2e6a2b' },
+      { b: 0.36, t: 0.82, r: 0.27, col: '#387b32' },
+      { b: 0.57, t: 1.0, r: 0.18, col: '#438c3a' }
+    ];
+    layers.forEach((L, li) => {
+      const N = 7;
+      const col = hex(L.col);
+      const under = col.map((v) => v * 0.55);
+      const ring = [];
+      for (let i = 0; i < N; i++) {
+        const a = (i / N) * Math.PI * 2 + li * 0.45;
+        const r = L.r * rr(0.86, 1.12);
+        ring.push([Math.cos(a) * r, L.b - rr(0.0, 0.045), Math.sin(a) * r]);
+      }
+      const apex = [rr(-0.012, 0.012), L.t, rr(-0.012, 0.012)];
+      const center = [0, L.b + 0.07, 0];
+      for (let i = 0; i < N; i++) {
+        const A = ring[i], B = ring[(i + 1) % N];
+        tri(V, A, B, apex, col, 1, [(A[0] + B[0]) / 2, 0.3, (A[2] + B[2]) / 2]);
+        tri(V, center, B, A, under, 1, [0, -1, 0]);
+      }
+    });
+    const treeVerts = V.length / 10;
+
+    // ---------- a small glade under the headline ----------
+    const GX = 0, GZ = -40;
+    const inGlade = (x, z, grow) => {
+      const a = Math.atan2(z - GZ, x - GX);
+      const edge = 1 + 0.16 * Math.sin(a * 3 + 1.3) + 0.08 * Math.sin(a * 7);
+      const ex = (x - GX) / 13, ez = (z - GZ) / 9.5;
+      return Math.sqrt(ex * ex + ez * ez) < edge * grow;
+    };
+
+    // ---------- trees (spatial grid for spacing) ----------
+    const count = Math.max(100, Math.min(8000, Math.round(opts.treeCount || 4500)));
+    const trees = [];
+    const cell = 3, grid = new Map();
+    const key = (ix, iz) => ix * 100003 + iz;
+    let tries = 0;
+    while (trees.length < count && tries < count * 40) {
+      tries++;
+      const z = 18 - Math.pow(rnd(), 1.25) * 190;
+      const depth = 30 - z;
+      const halfW = 18 + depth * 1.1;
+      const x = rr(-halfW, halfW);
+      if (inGlade(x, z, 1.08)) continue;
+      const minD = 1.4 + depth * 0.005;
+      const ix = Math.floor(x / cell), iz = Math.floor(z / cell);
+      let ok = true;
+      for (let gx = ix - 1; gx <= ix + 1 && ok; gx++) {
+        for (let gz = iz - 1; gz <= iz + 1 && ok; gz++) {
+          const list = grid.get(key(gx, gz));
+          if (!list) continue;
+          for (let i = 0; i < list.length; i++) {
+            const dx = list[i].x - x, dz = list[i].z - z;
+            if (dx * dx + dz * dz < minD * minD) { ok = false; break; }
+          }
+        }
+      }
+      if (!ok) continue;
+      const H = rr(7, 15);
+      const warm = rnd() < 0.06;
+      const t = {
+        x, z, H,
+        W: H * rr(0.36, 0.5),
+        rot: rr(0, Math.PI * 2),
+        tint: warm ? [rr(1.25, 1.45), rr(1.05, 1.2), rr(0.6, 0.75)] : [rr(0.82, 1.1), rr(0.9, 1.15), rr(0.72, 1.0)],
+        phase: rr(0, 100),
+        k: rr(9, 15),
+        c: rr(1.5, 2.3),
+        lx: 0.06 + rr(-0.045, 0.05),
+        lz: -0.02 + rr(-0.03, 0.03),
+        bx: 0, bz: 0, vx: 0, vz: 0, ag: 0.1, rust: 0, sx: 0.5
+      };
+      trees.push(t);
+      const k2 = key(ix, iz);
+      if (!grid.has(k2)) grid.set(k2, []);
+      grid.get(k2).push(t);
+    }
+    const NT = trees.length;
+    // trees further away sound quieter
+    trees.forEach((t) => { t.bx = t.lx; t.bz = t.lz; t.near = Math.pow(Math.max(0.04, 1 - (30 - t.z - 15) / 170), 1.8); });
+
+    // ---------- shaders ----------
+    const VS = `#version 300 es
+precision highp float;
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec3 aNor;
+layout(location=2) in vec3 aCol;
+layout(location=3) in float aLeaf;
+layout(location=4) in vec4 iTr;
+layout(location=5) in vec4 iTint;
+layout(location=6) in vec4 iBend;
+uniform mat4 uVP;
+uniform float uTime;
+uniform float uFlutter;
+out vec3 vCol; out vec3 vNor; out vec3 vWorld; out float vLeaf; out float vH;
+void main(){
+  float c = cos(iTint.w), s = sin(iTint.w);
+  vec3 p = aPos;
+  p.xz = vec2(c*p.x - s*p.z, s*p.x + c*p.z);
+  vec3 n = aNor;
+  n.xz = vec2(c*n.x - s*n.z, s*n.x + c*n.z);
+  float h = clamp(p.y, 0.0, 1.0);
+  float ag = iBend.z * uFlutter;
+  vec3 fl = vec3(
+    sin(uTime*14.0 + iBend.w + p.y*23.0 + p.x*31.0),
+    sin(uTime*11.0 + iBend.w*1.7 + p.z*29.0 + p.y*13.0)*0.6,
+    cos(uTime*12.5 + iBend.w*0.6 + p.y*19.0 + p.z*27.0));
+  p += fl * aLeaf * ag * 0.03 * (0.3 + h);
+  vec3 w = vec3(p.x*iTr.w, p.y*iTr.z, p.z*iTr.w);
+  vec2 b = iBend.xy * (h*h) * iTr.z;
+  w.xz += b;
+  w.y -= 0.5 * dot(b, b) / iTr.z * h;
+  w.x += iTr.x; w.z += iTr.y;
+  vNor = normalize(n);
+  vCol = mix(aCol, aCol * iTint.rgb, aLeaf);
+  vWorld = w; vLeaf = aLeaf; vH = h;
+  gl_Position = uVP * vec4(w, 1.0);
+}`;
+    const FS = `#version 300 es
+precision highp float;
+in vec3 vCol; in vec3 vNor; in vec3 vWorld; in float vLeaf; in float vH;
+uniform vec3 uEye; uniform vec3 uFog; uniform vec3 uSkyTop; uniform vec3 uSun; uniform vec3 uSunCol;
+out vec4 o;
+void main(){
+  vec3 n = normalize(vNor);
+  float diff = max(dot(n, uSun), 0.0);
+  vec3 amb = mix(vec3(0.16, 0.18, 0.14), vec3(0.40, 0.48, 0.58), n.y*0.5 + 0.5);
+  vec3 v = normalize(uEye - vWorld);
+  float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0) * 0.2;
+  vec3 col = vCol * (amb + diff*uSunCol) + rim * uSunCol * vCol;
+  col *= mix(0.7, 1.0, smoothstep(0.0, 0.55, vH + (1.0 - vLeaf)*0.3));
+  float d = length(vWorld - uEye);
+  float f = 1.0 - exp(-pow(d*0.0062, 1.5));
+  f *= mix(1.0, 0.85, clamp(vWorld.y/30.0, 0.0, 1.0));
+  vec3 fogc = uFog;
+  col = mix(col, fogc, clamp(f, 0.0, 1.0));
+  o = vec4(col, 1.0);
+}`;
+    const SKY_VS = `#version 300 es
+layout(location=0) in vec2 aP;
+void main(){ gl_Position = vec4(aP, 0.0, 1.0); }`;
+    const SKY_FS = `#version 300 es
+precision highp float;
+uniform vec2 uRes; uniform float uHorizon; uniform vec3 uFog; uniform vec3 uSkyTop; uniform vec3 uSunCol;
+out vec4 o;
+void main(){
+  vec2 uv = gl_FragCoord.xy / uRes;
+  float y = uv.y;
+  float t = clamp((y - uHorizon) / max(1.0 - uHorizon, 0.001), 0.0, 1.0);
+  vec3 col = mix(uFog, uSkyTop, pow(t, 0.7));
+  float asp = uRes.x / uRes.y;
+  float sd = distance(uv * vec2(asp, 1.0), vec2(0.86 * asp, 1.08));
+  col += vec3(1.0, 0.93, 0.74) * (0.32 * exp(-sd * 4.0) + 0.38 * exp(-sd * 14.0));
+  float nse = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
+  col += (nse - 0.5) / 255.0;
+  o = vec4(col, 1.0);
+}`;
+
+    const compile = (type, src) => {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src); gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.warn(gl.getShaderInfoLog(s));
+      return s;
+    };
+    const program = (vs, fs) => {
+      const p = gl.createProgram();
+      gl.attachShader(p, compile(gl.VERTEX_SHADER, vs));
+      gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+      gl.linkProgram(p);
+      if (!gl.getProgramParameter(p, gl.LINK_STATUS)) console.warn(gl.getProgramInfoLog(p));
+      return p;
+    };
+    const prog = program(VS, FS);
+    const sky = program(SKY_VS, SKY_FS);
+    const U = {};
+    ['uVP', 'uTime', 'uFlutter', 'uEye', 'uFog', 'uSkyTop', 'uSun', 'uSunCol'].forEach((n) => { U[n] = gl.getUniformLocation(prog, n); });
+    const SU = {};
+    ['uRes', 'uHorizon', 'uFog', 'uSkyTop', 'uSunCol'].forEach((n) => { SU[n] = gl.getUniformLocation(sky, n); });
+
+    // ---------- buffers ----------
+    const setupMesh = (data) => {
+      const b = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, b);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 40, 0);
+      gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 40, 12);
+      gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 40, 24);
+      gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 1, gl.FLOAT, false, 40, 36);
+    };
+
+    const treeVao = gl.createVertexArray();
+    gl.bindVertexArray(treeVao);
+    setupMesh(V);
+    const inst = new Float32Array(NT * 8);
+    trees.forEach((t, i) => { inst.set([t.x, t.z, t.H, t.W, t.tint[0], t.tint[1], t.tint[2], t.rot], i * 8); });
+    const instBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, inst, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(4); gl.vertexAttribPointer(4, 4, gl.FLOAT, false, 32, 0); gl.vertexAttribDivisor(4, 1);
+    gl.enableVertexAttribArray(5); gl.vertexAttribPointer(5, 4, gl.FLOAT, false, 32, 16); gl.vertexAttribDivisor(5, 1);
+    const bend = new Float32Array(NT * 4);
+    const bendBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, bendBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, bend.byteLength, gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(6); gl.vertexAttribPointer(6, 4, gl.FLOAT, false, 16, 0); gl.vertexAttribDivisor(6, 1);
+    gl.bindVertexArray(null);
+
+    // low-poly ground: a grid of flat-coloured triangles, lighter meadow in the glade
+    const G = [];
+    const moss = ['#324e26', '#385629', '#2e4824', '#3d5c2c'].map(hex);
+    const meadow = ['#67833a', '#6f8c40', '#5f7b36'].map(hex);
+    const up = [0, 1, 0];
+    const GS = 6;
+    for (let gx = -300; gx < 300; gx += GS) {
+      for (let gz = -240; gz < 40; gz += GS) {
+        const a = [gx, 0, gz], b = [gx + GS, 0, gz], c = [gx + GS, 0, gz + GS], d = [gx, 0, gz + GS];
+        const pick = (cx, cz) => {
+          const m = inGlade(cx, cz, 1.0);
+          const pal = m ? meadow : moss;
+          return pal[Math.floor(rnd() * pal.length)];
+        };
+        const c1 = pick(gx + GS * 0.66, gz + GS * 0.33), c2 = pick(gx + GS * 0.33, gz + GS * 0.66);
+        put(G, a, up, c1, 0); put(G, b, up, c1, 0); put(G, c, up, c1, 0);
+        put(G, a, up, c2, 0); put(G, c, up, c2, 0); put(G, d, up, c2, 0);
+      }
+    }
+    const groundVerts = G.length / 10;
+    const groundVao = gl.createVertexArray();
+    gl.bindVertexArray(groundVao);
+    setupMesh(G);
+    gl.bindVertexArray(null);
+
+    const skyVao = gl.createVertexArray();
+    gl.bindVertexArray(skyVao);
+    const sb = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, sb);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0);
+    gl.bindVertexArray(null);
+
+    // ---------- camera math ----------
+    const perspective = (fovy, aspect, near, far) => {
+      const f = 1 / Math.tan(fovy / 2);
+      return [f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, (far + near) / (near - far), -1, 0, 0, (2 * far * near) / (near - far), 0];
+    };
+    const lookAt = (e, c, upv) => {
+      const z = nrm(sub(e, c));
+      const x = nrm(cross(upv, z));
+      const y = cross(z, x);
+      return [x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0,
+        -(x[0] * e[0] + x[1] * e[1] + x[2] * e[2]), -(y[0] * e[0] + y[1] * e[1] + y[2] * e[2]), -(z[0] * e[0] + z[1] * e[1] + z[2] * e[2]), 1];
+    };
+    const mul = (a, b) => {
+      const o = new Float32Array(16);
+      for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) {
+        let s = 0;
+        for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k];
+        o[c * 4 + r] = s;
+      }
+      return o;
+    };
+
+    // ---------- sound: synthesised leaf rustle + wind whoosh ----------
+    let audio = null;
+    let soundOn = false;
+    const vol = () => Math.max(0, Math.min(1, opts.volume ?? 0.5));
+    const initAudio = () => {
+      if (audio) { if (audio.ctx.state === 'suspended') audio.ctx.resume(); return; }
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      const len = ctx.sampleRate * 3;
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      let b0 = 0, b1 = 0, b2 = 0;
+      for (let i = 0; i < len; i++) {
+        const w = Math.random() * 2 - 1;
+        b0 = 0.99765 * b0 + w * 0.0990460;
+        b1 = 0.96300 * b1 + w * 0.2965164;
+        b2 = 0.57000 * b2 + w * 1.0526913;
+        data[i] = (b0 + b1 + b2 + w * 0.1848) * 0.2;
+      }
+      const noise = (rate) => {
+        const s = ctx.createBufferSource();
+        s.buffer = buf; s.loop = true; s.playbackRate.value = rate;
+        s.start(0, Math.random() * 2.5);
+        return s;
+      };
+      const master = ctx.createGain(); master.gain.value = 0;
+      const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+      if (pan) { pan.connect(master); }
+      master.connect(ctx.destination);
+      const out = pan || master;
+
+      // leaves: soft, mid-range rustle (no harsh hiss)
+      const leafHP = ctx.createBiquadFilter(); leafHP.type = 'highpass'; leafHP.frequency.value = 450;
+      const leafBP = ctx.createBiquadFilter(); leafBP.type = 'bandpass'; leafBP.frequency.value = 1500; leafBP.Q.value = 0.45;
+      const leafLP = ctx.createBiquadFilter(); leafLP.type = 'lowpass'; leafLP.frequency.value = 3800; leafLP.Q.value = 0.5;
+      const leafG = ctx.createGain(); leafG.gain.value = 0;
+      noise(0.85).connect(leafHP); leafHP.connect(leafBP); leafBP.connect(leafLP); leafLP.connect(leafG); leafG.connect(out);
+
+      // whoosh: dark, follows the speed of the cursor
+      const whooshLP = ctx.createBiquadFilter(); whooshLP.type = 'lowpass'; whooshLP.frequency.value = 400; whooshLP.Q.value = 0.5;
+      const whooshG = ctx.createGain(); whooshG.gain.value = 0;
+      noise(0.5).connect(whooshLP); whooshLP.connect(whooshG); whooshG.connect(out);
+
+      // very quiet ambient wind bed
+      const bedLP = ctx.createBiquadFilter(); bedLP.type = 'lowpass'; bedLP.frequency.value = 280;
+      const bedG = ctx.createGain(); bedG.gain.value = 0.025;
+      noise(0.4).connect(bedLP); bedLP.connect(bedG); bedG.connect(master);
+
+      audio = { ctx, master, pan, leafG, leafBP, whooshG, whooshLP, bedG, flick: 1 };
+    };
+    const setSound = (on) => {
+      soundOn = on;
+      if (on) initAudio();
+      if (audio) audio.master.gain.setTargetAtTime(on ? vol() : 0, audio.ctx.currentTime, 0.15);
+    };
+
+    // ---------- state ----------
+    const FOG = hex('#9dbcd3'), SKYTOP = hex('#2766a6');
+    const SUN = nrm([0.55, 0.75, 0.35]);
+    const SUNCOL = [0.88, 0.81, 0.68];
+    let cw = 1, ch = 1, dpr = 1;
+    const cam = { x: 0, y: 0 };
+    const pointer = { nx: 0, ny: 0, speed: 0 };
+    const puffs = [];
+    let last = null;
+    let raf = 0, prev = performance.now(), time = 0;
+    const scr = new Float32Array(6);
+
+    const resize = () => {
+      const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
+      const d = Math.min(window.devicePixelRatio || 1, 2);
+      if (w !== cw || h !== ch || d !== dpr) {
+        cw = w; ch = h; dpr = d;
+        canvas.width = Math.round(w * d);
+        canvas.height = Math.round(h * d);
+      }
+    };
+
+    const onMove = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const sc = (canvas.clientWidth || 1) / (rect.width || 1);
+      const x = (e.clientX - rect.left) * sc, y = (e.clientY - rect.top) * sc;
+      pointer.nx = (x / cw) * 2 - 1;
+      pointer.ny = (y / ch) * 2 - 1;
+      const now = performance.now();
+      if (last) {
+        const dx = x - last.x, dy = y - last.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 2) return;
+        const dts = Math.max((now - last.t) / 1000, 1 / 240);
+        const spd = Math.min(dist / dts, 4000);
+        pointer.speed = Math.max(pointer.speed, spd);
+        const f = Math.min(spd / 600, 1.6);
+        puffs.push({ x, y, vx: dx * f, vy: dy * f, ux: dx / dist, uy: dy / dist, spd, r: 12 + Math.min(spd * 0.006, 10), life: 1 });
+        if (puffs.length > 90) puffs.shift();
+      }
+      last = { x, y, t: now };
+    };
+    const onLeave = () => { last = null; };
+    root.addEventListener('pointermove', onMove);
+    root.addEventListener('pointerleave', onLeave);
+    root.addEventListener('pointercancel', onLeave);
+
+    const segDist = (px, py, ax, ay, bx, by) => {
+      const vx = bx - ax, vy = by - ay;
+      const l2 = vx * vx + vy * vy || 1;
+      let t = ((px - ax) * vx + (py - ay) * vy) / l2;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const dx = px - (ax + vx * t), dy = py - (ay + vy * t);
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+    const project = (m, x, y, z, o) => {
+      const w = m[3] * x + m[7] * y + m[11] * z + m[15];
+      if (w <= 0.01) return false;
+      scr[o] = ((m[0] * x + m[4] * y + m[8] * z + m[12]) / w * 0.5 + 0.5) * cw;
+      scr[o + 1] = (0.5 - (m[1] * x + m[5] * y + m[9] * z + m[13]) / w * 0.5) * ch;
+      return true;
+    };
+
+    const frame = (now) => {
+      raf = requestAnimationFrame(frame);
+      const dt = Math.min(Math.max((now - prev) / 1000, 0), 1 / 30);
+      prev = now;
+      time += dt;
+      resize();
+
+      // high camera looking down over the forest, with gentle parallax
+      const ease = Math.min(1, dt * 2);
+      cam.x += (pointer.nx - cam.x) * ease;
+      cam.y += (pointer.ny - cam.y) * ease;
+      const aspect = cw / ch;
+      const fov = (aspect < 1 ? 66 : 50) * Math.PI / 180;
+      const eye = [cam.x * 1.6, 30 - cam.y * 1.0, 30];
+      const VP = mul(perspective(fov, aspect, 0.5, 700), lookAt(eye, [cam.x * 0.5, 0, -40], [0, 1, 0]));
+      let horizon = 1.2;
+      if (project(VP, eye[0], 0, eye[2] - 3000, 0)) horizon = 1 - scr[1] / ch;
+
+      for (let i = puffs.length - 1; i >= 0; i--) {
+        const p = puffs[i];
+        p.life -= dt * 7;
+        if (p.life <= 0) { puffs.splice(i, 1); continue; }
+        p.r += dt * 10;
+        p.x += p.ux * p.spd * 0.04 * dt * p.life;
+        p.y += p.uy * p.spd * 0.04 * dt * p.life;
+      }
+      pointer.speed *= Math.exp(-dt * 4);
+
+      const K = 0.2 * (opts.windStrength ?? 1);
+      const gdx = 0.97, gdz = -0.24;
+      let rustSum = 0, rustX = 0;
+      for (let i = 0; i < NT; i++) {
+        const t = trees[i];
+        let fx = 0, fy = 0;
+        if (puffs.length && project(VP, t.x, 0, t.z, 0) && project(VP, t.x + t.bx * t.H, t.H * 0.95, t.z + t.bz * t.H, 2) && project(VP, t.x + 0.34 * t.W, t.H * 0.45, t.z, 4)) {
+          t.sx = scr[0] / cw;
+          const midX = (scr[0] + scr[2]) / 2, midY = (scr[1] + scr[3]) / 2;
+          const crown = Math.hypot(scr[4] - midX, scr[5] - midY) * 0.25;
+          for (let j = 0; j < puffs.length; j++) {
+            const p = puffs[j];
+            let d = segDist(p.x, p.y, scr[0], scr[1], scr[2], scr[3]) - crown;
+            if (d < 0) d = 0;
+            const q = d / p.r;
+            if (q > 2) continue;
+            const fall = Math.exp(-q * q) * p.life;
+            fx += p.vx * fall;
+            fy += p.vy * fall;
+          }
+        }
+        let Fx = fx * K, Fz = fy * K;
+        const fm = Math.hypot(Fx, Fz);
+        if (fm > 22) { Fx *= 22 / fm; Fz *= 22 / fm; }
+
+        const g = (reduce ? 0.015 : 0.03) + (reduce ? 0.02 : 0.07) * Math.pow(0.5 + 0.5 * Math.sin(time * 0.65 - t.x * 0.08 + t.z * 0.05 + t.phase * 0.05), 4);
+        const tx = t.lx + g * gdx, tz = t.lz + g * gdz;
+        t.vx += (t.k * (tx - t.bx) - t.c * t.vx + Fx) * dt;
+        t.vz += (t.k * (tz - t.bz) - t.c * t.vz + Fz) * dt;
+        t.bx += t.vx * dt;
+        t.bz += t.vz * dt;
+        const bm = Math.hypot(t.bx, t.bz);
+        if (bm > 0.5) { t.bx *= 0.5 / bm; t.bz *= 0.5 / bm; t.vx *= 0.6; t.vz *= 0.6; }
+
+        const target = Math.min(1, 0.12 + fm * 0.12 + Math.hypot(t.vx, t.vz) * 1.2 + g * 2);
+        t.ag += (target - t.ag) * Math.min(1, dt * (target > t.ag ? 10 : 1.8));
+
+        t.rust = Math.max(t.rust * Math.exp(-dt * 9), Math.min(1, fm * 0.08));
+        if (t.rust > 0.01) { const w = t.rust * t.near; rustSum += w; rustX += w * t.sx; }
+
+        bend[i * 4] = t.bx;
+        bend[i * 4 + 1] = t.bz;
+        bend[i * 4 + 2] = t.ag;
+        bend[i * 4 + 3] = t.phase;
+      }
+
+      // drive the sound from how much of the forest is being stirred
+      if (audio && soundOn) {
+        const at = audio.ctx.currentTime;
+        const inten = 1 - Math.exp(-rustSum / 8);
+        // slow, gentle wobble instead of per-frame crackle
+        audio.flick += (0.7 + Math.random() * 0.6 - audio.flick) * 0.08;
+        const leaf = inten * 0.26 * audio.flick;
+        audio.leafG.gain.setTargetAtTime(leaf, at, 0.09);
+        audio.leafBP.frequency.setTargetAtTime(1300 + inten * 900, at, 0.25);
+        const sp = Math.min(1, pointer.speed / 3000) * Math.min(1, inten * 3);
+        audio.whooshG.gain.setTargetAtTime(sp * 0.18, at, 0.15);
+        audio.whooshLP.frequency.setTargetAtTime(320 + sp * 500, at, 0.2);
+        audio.bedG.gain.setTargetAtTime(0.02 + 0.012 * Math.sin(time * 0.65), at, 0.5);
+        if (audio.pan && rustSum > 0.05) audio.pan.pan.setTargetAtTime(Math.max(-0.8, Math.min(0.8, (rustX / rustSum) * 2 - 1)), at, 0.15);
+        audio.master.gain.setTargetAtTime(vol(), at, 0.2);
+      }
+
+      // draw
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.disable(gl.DEPTH_TEST);
+      gl.depthMask(false);
+      gl.useProgram(sky);
+      gl.uniform2f(SU.uRes, canvas.width, canvas.height);
+      gl.uniform1f(SU.uHorizon, horizon);
+      gl.uniform3fv(SU.uFog, FOG);
+      gl.uniform3fv(SU.uSkyTop, SKYTOP);
+      gl.uniform3fv(SU.uSunCol, SUNCOL);
+      gl.bindVertexArray(skyVao);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthMask(true);
+      gl.clear(gl.DEPTH_BUFFER_BIT);
+      gl.useProgram(prog);
+      gl.uniformMatrix4fv(U.uVP, false, VP);
+      gl.uniform1f(U.uTime, time);
+      gl.uniform1f(U.uFlutter, reduce ? 0.3 : 1);
+      gl.uniform3fv(U.uEye, eye);
+      gl.uniform3fv(U.uFog, FOG);
+      gl.uniform3fv(U.uSkyTop, SKYTOP);
+      gl.uniform3fv(U.uSun, SUN);
+      gl.uniform3fv(U.uSunCol, SUNCOL);
+
+      gl.bindVertexArray(groundVao);
+      gl.vertexAttrib4f(4, 0, 0, 1, 1);
+      gl.vertexAttrib4f(5, 1, 1, 1, 0);
+      gl.vertexAttrib4f(6, 0, 0, 0, 0);
+      gl.drawArrays(gl.TRIANGLES, 0, groundVerts);
+
+      gl.bindVertexArray(treeVao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, bendBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, bend);
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, treeVerts, NT);
+      gl.bindVertexArray(null);
+    };
+    resize();
+    raf = requestAnimationFrame(frame);
+
+    // soft two-note chime for hovering the button
+    const hoverSound = () => {
+      if (!audio || !soundOn) return;
+      const ctx = audio.ctx, at = ctx.currentTime;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400;
+      lp.connect(audio.master);
+      [[659.25, 0, 0.07], [987.77, 0.07, 0.05]].forEach(([f, delay, peak]) => {
+        const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, at + delay);
+        g.gain.linearRampToValueAtTime(peak, at + delay + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + delay + 0.6);
+        o.connect(g); g.connect(lp);
+        o.start(at + delay); o.stop(at + delay + 0.65);
+      });
+    };
+
+    return {
+      setSound,
+      hoverSound,
+      stop() {
+        cancelAnimationFrame(raf);
+        root.removeEventListener('pointermove', onMove);
+        root.removeEventListener('pointerleave', onLeave);
+        root.removeEventListener('pointercancel', onLeave);
+        if (audio) { try { audio.ctx.close(); } catch (e) { /* already closed */ } }
+        const lose = gl.getExtension('WEBGL_lose_context');
+        if (lose) lose.loseContext();
+      }
+    };
+  }
+
+  var forest = startForest(document.getElementById('forest'), opts);
+  var btn = document.getElementById('sound');
+  btn.addEventListener('click', function () {
+    var on = btn.getAttribute('aria-pressed') !== 'true';
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.querySelector('span').textContent = on ? 'Sound on' : 'Sound off';
+    forest.setSound(on);
+  });
+  document.querySelector('.cta').addEventListener('mouseenter', function () { forest.hoverSound(); });
+})();
+</script>
 </body>
 </html>

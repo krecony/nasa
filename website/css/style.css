@@ -1,12 +1,12 @@
 * { box-sizing: border-box; }
 
 :root {
-  --bg: #0b1020;
-  --panel: #131b33;
+  --bg: #010d00;
+  --panel: #053600;
   --text: #e8ecf5;
-  --muted: #a9b3cc;
+  --muted: #e6ffe3;
   --accent: #ffb000;
-  --border: #33406a;
+  --border: #0d3f00;
 }
 
 body {
