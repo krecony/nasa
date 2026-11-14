@@ -32,5 +32,20 @@
     "video": "media/imerg.mp4",
     "captions": "media/imerg.vtt",
     "features_image": "media/imerg.png"
+  },
+  {
+    "id": "WindSpeed",
+    "title": "Near-Surface Wind Speed (GEOS-FP)",
+    "source": "NASA GMAO GEOS-FP model, NASA Scientific Visualization Studio (SVS 5148)",
+    "description": "A flat map of the whole Earth showing how fast the wind blows 10 meters (about 30 feet) above the ground, hour by hour, from NASA's GEOS-FP weather model. Colors run from pale lavender and purple for light winds, through blue, cyan, yellow and orange, to red for strong winds (around 20 meters per second), and dark red, brown and grey for hurricane-force winds (up to 40 meters per second, about 145 km/h). Winds are strongest over the oceans, where there is little to slow them down, and swirling bands of color show weather fronts and storms moving around the globe.",
+    "listening_guide": [
+      "Five breathy whistles, one per band of latitude. Windier = higher.",
+      "Wind chimes ring where the wind is stronger than 20 m/s (storms). Stronger = higher and louder; west = left, east = right.",
+      "The rushing wind gets louder as the whole planet gets windier.",
+      "A chord marks the start of every day."
+    ],
+    "video": "media/WindSpeed.mp4",
+    "captions": "media/WindSpeed.vtt",
+    "features_image": "media/WindSpeed.png"
   }
 ]
