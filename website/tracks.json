@@ -1,0 +1,19 @@
+[
+  {
+    "id": "imerg",
+    "title": "Global Rain and Snow (IMERG)",
+    "source": "NASA GPM IMERG precipitation, NASA Scientific Visualization Studio",
+    "description": "A flat map of the whole Earth, showing a week of rain and snow measured by NASA's Global Precipitation Measurement satellites (IMERG), in half-hour steps. Rain is drawn in green, yellow and red (light to heavy); snow in light blue to purple. Rain bands sweep across the oceans from west to east, a belt of storms circles the tropics, and snow falls mostly near the poles.",
+    "listening_guide": [
+      "Raindrops: each pluck is rain somewhere on Earth. More drops = more rain.",
+      "Left to right in your headphones = west to east on the map.",
+      "Higher drops = rain further north, lower drops = further south.",
+      "Low rumble and booms = heavy downpours (10 mm per hour or more).",
+      "High glassy bells = snow.",
+      "The warm chord swells as rain spreads and fades as it shrinks; it changes and a chime rings at the start of every day."
+    ],
+    "video": "media/imerg.mp4",
+    "captions": "media/imerg.vtt",
+    "features_image": "media/imerg.png"
+  }
+]

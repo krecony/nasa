@@ -1,0 +1,12 @@
+# Source videos are big: download them into videos/ yourself
+videos/*.mp4
+videos/*.webm
+videos/*.mov
+
+__pycache__/
+*.pyc
+.DS_Store
+
+# Generated while tweaking
+output/*/analysis.pkl
+output/*/stems/

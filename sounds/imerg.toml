@@ -1,0 +1,142 @@
+# =============================================================================
+#  Earth Jukebox - sound settings for "Global Rain and Snow (IMERG)"
+# =============================================================================
+#
+#  Edit anything here, then run (fast, skips the video):
+#     py sonify.py imerg videos/imergert_1080p_30.mp4 --no-video
+#  and listen to output/imerg/sonification.wav
+#
+#  Handy while tweaking:
+#     --only drops,thunder      hear just those layers
+#     --stems                   also save every layer as its own WAV (output/imerg/stems/)
+#     --sounds sounds/other.toml   try a different settings file
+#
+#  INSTRUMENTS
+#  Every layer can use a built-in synth OR your own WAV file:
+#     instrument = "marimba"               built-in: marimba, bell, pluck, sine
+#     sample = "samples/my_piano_C4.wav"   your own file (overrides `instrument`)
+#     root = "C4"                          the note your recording plays
+#  Your sample is sped up / slowed down to play every note. See samples/README.md.
+#  Delete or comment out (#) the `sample` line to go back to the built-in synth.
+#
+#  Values marked 0..1 are fractions; "seconds" are seconds. Any line you delete
+#  falls back to its default (see jukebox/config.py).
+# =============================================================================
+
+
+[music]
+key = "D"                      # C, C#, D, D#, E, F, F#, G, G#, A, A#, B
+scale = "major_pentatonic"     # major_pentatonic, minor_pentatonic, major, minor, dorian,
+                               # lydian, mixolydian, harmonic_minor, blues, whole_tone, chromatic
+# One chord per day, cycling. Numbers = semitones above the key (12 = an octave up).
+day_chords = [
+  [0, 7, 16],     # D  A  F#   (D major)
+  [-3, 4, 12],    # B  F# D    (B minor)
+  [-5, 2, 11],    # G  D  B    (G major)
+  [-3, 7, 14],    # A  E  B    (A sus)
+]
+
+
+[mix]
+reverb_seconds = 2.4     # length of the echo tail
+reverb_wet = 0.28        # 0 = dry, 1 = only echo
+peak = 0.89              # overall loudness (max 1.0)
+
+
+# --- Raindrops: every drop = rain somewhere on Earth -------------------------
+[drops]
+enabled = true
+volume = 0.19
+
+instrument = "marimba"   # marimba, bell, pluck, sine
+decay = 0.32             # seconds each drop rings
+brightness = 0.5         # 0..1: dull -> bright/clicky
+attack = 0.003           # seconds to fade in (bigger = softer start)
+# sample = "samples/example_kalimba_C5.wav"
+# root = "C5"
+# pitched = true         # false = play the sample as-is, at every pitch
+# length = 0.6           # seconds: cut long samples short (0 = full length)
+
+per_second_min = 7       # drops per second when the least rain is falling
+per_second_max = 28      # ...and when the most rain is falling
+lowest_note = "D3"       # rain furthest south...
+highest_note = "D6"      # ...to rain furthest north
+south_lat = -60          # latitude that plays the lowest note
+north_lat = 60           # latitude that plays the highest note
+pitch_jitter = 1         # random +- scale steps, so it's less mechanical
+quiet = 0.4              # 0..1 loudness of the lightest rain
+loud = 1.0               # 0..1 loudness of the heaviest rain
+stereo_width = 0.95      # 0 = mono, 1 = full west-left / east-right
+
+
+# --- Pad: warm chord that swells with global rain coverage -------------------
+[pad]
+enabled = true
+volume = 0.26
+
+instrument = "pad"
+harmonics = [1.0, 0.45, 0.25, 0.12]   # strength of each overtone: more/larger = brighter
+detune_cents = 7                      # chorus width (0 = clean)
+# sample = "samples/my_strings_A3.wav"   # a sustained note; looped to fill each day
+# root = "A3"
+# crossfade = 0.3                         # seconds, smooths the loop point
+
+octave = 3               # octave of the chord
+bass = true              # add the root an octave lower
+level_min = 0.3          # 0..1 volume when least rain...
+level_max = 1.0          # ...and when most rain
+glide = 0.25             # seconds to slide into the next day's chord
+pans = [-0.5, -0.15, 0.15, 0.5]   # stereo position per chord note (-1 left .. 1 right)
+
+
+# --- Thunder: heavy rain (>= 10 mm/hour) -------------------------------------
+[thunder]
+enabled = true
+volume = 0.45
+
+texture = "rumble"       # rumble (low thunder) or noise (band of noise, e.g. hiss/wind)
+cutoff = 110             # Hz, rumble: higher = less deep
+low = 200                # Hz, noise: lowest frequency
+high = 2000              # Hz, noise: highest frequency
+# sample = "samples/example_rain_loop.wav"   # any recording; looped, volume follows heavy rain
+curve = 1.5              # >1 = only the heaviest rain gets loud
+
+boom = "boom"            # built-in boom...
+# boom_sample = "samples/my_thunderclap.wav"   # ...or your own one-shot
+boom_volume = 1.3
+boom_decay = 0.7         # seconds (built-in boom)
+boom_threshold = 0.8     # 0..1 how heavy before a boom (relative to this clip)
+boom_cooldown = 1.8      # seconds, minimum gap between booms
+
+
+# --- Snow ------------------------------------------------------------------------
+[snow]
+enabled = true
+volume = 0.06
+
+instrument = "bell"
+decay = 1.2
+brightness = 0.5
+attack = 0.005
+# sample = "samples/my_glockenspiel_C6.wav"
+# root = "C6"
+
+per_second_min = 0.8     # bells per second when least snow...
+per_second_max = 5.3     # ...and when most snow
+octaves_up = [2, 3]      # notes are chord notes this many octaves above octave 3
+
+
+# --- Chime: rings at the start of every day -----------------------------------
+[chime]
+enabled = true
+volume = 0.12
+
+instrument = "bell"
+decay = 2.2
+brightness = 0.5
+attack = 0.005
+# sample = "samples/my_bell_C5.wav"
+# root = "C5"
+
+note = "D5"
+add_fifth = true         # also play the note 7 semitones higher, softer

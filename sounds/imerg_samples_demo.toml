@@ -1,0 +1,33 @@
+# Demo: the same data with different instruments, using the WAV files in samples/.
+# Any setting not listed here uses the default (see sounds/imerg.toml for all options).
+#
+#   py sonify.py imerg videos/imergert_1080p_30.mp4 --no-video --sounds sounds/imerg_samples_demo.toml
+
+[music]
+key = "A"
+scale = "minor_pentatonic"
+day_chords = [[0, 7, 15], [-4, 3, 12], [-7, 0, 8], [-2, 5, 14]]   # Am  F  Dm  G
+
+[drops]
+sample = "samples/example_kalimba_C5.wav"   # a WAV file instead of the built-in marimba
+root = "C5"
+length = 0.8
+lowest_note = "A3"
+highest_note = "A6"
+volume = 0.17
+
+[pad]
+harmonics = [1.0, 0.2, 0.05]   # fewer overtones: softer, rounder chord
+detune_cents = 12
+volume = 0.24
+
+[thunder]
+sample = "samples/example_rain_loop.wav"    # rain recording that swells with heavy rain
+curve = 1.0
+volume = 0.35
+
+[snow]
+instrument = "pluck"           # plucked string instead of bells
+decay = 1.0
+brightness = 0.7
+volume = 0.08
