@@ -17,9 +17,11 @@ import numpy as np
 def find_bar(img):
     """Return (x0, y0, x1, y1) of the bar's inside, in image pixels."""
     h, w = img.shape[:2]
-    corners = np.concatenate([img[:3, :3].reshape(-1, 3), img[:3, -3:].reshape(-1, 3),
-                              img[-3:, :3].reshape(-1, 3), img[-3:, -3:].reshape(-1, 3)])
-    bg = np.median(corners, axis=0)
+    # background = the most common color (works for plain and see-through backgrounds)
+    q = (img // 8).reshape(-1, 3)
+    vals, counts = np.unique(q, axis=0, return_counts=True)
+    common = np.all(q == vals[counts.argmax()], axis=1)
+    bg = np.median(img.reshape(-1, 3)[common], axis=0)
     differs = (np.abs(img.astype(int) - bg).max(-1) > 30).astype(np.uint8)
     best, best_area = None, 0
     # parts of a bar can match the background (e.g. a white section), so bridge
@@ -68,10 +70,15 @@ def read_colorbar(spec, root):
     path = Path(spec["image"])
     if not path.is_absolute():
         path = Path(root) / path
-    img = cv2.imread(str(path))
+    img = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
     if img is None:
         raise SystemExit(f"Can't open the color bar image: {path}")
-    img = img[:, :, ::-1]
+    if img.ndim == 2:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    if img.shape[2] == 4:                       # see-through PNG: put it on mid-grey
+        a = img[:, :, 3:4].astype(float) / 255
+        img = (img[:, :, :3] * a + 128 * (1 - a)).astype(np.uint8)
+    img = img[:, :, ::-1].copy()
     x0, y0, x1, y1 = spec.get("box") or find_bar(img)
     if (x1 - x0) >= (y1 - y0):
         mid, half = (y0 + y1) // 2, max((y1 - y0) // 4, 1)
