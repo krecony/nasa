@@ -12,6 +12,7 @@ All pixel coordinates are for the ORIGINAL video resolution (here 1920x1080).
 
 IMERG = {
     "id": "imerg",
+    "kind": "categories",             # data drawn only where it happens (rain), with a color bar
     "title": "Global Rain and Snow (IMERG)",
     "source": "NASA GPM IMERG precipitation, NASA Scientific Visualization Studio",
     # Text for the website (shown and read by screen readers)
@@ -79,4 +80,48 @@ IMERG = {
     "sounds": "sounds/imerg.toml",
 }
 
-PRESETS = {p["id"]: p for p in [IMERG]}
+GMAO_T2M = {
+    "id": "gmao_t2m",
+    "kind": "field",                  # a value everywhere on the map (see jukebox/field.py)
+    "title": "Near-Surface Temperature (GEOS-FP)",
+    "source": "NASA GMAO GEOS-FP model, NASA Scientific Visualization Studio (SVS 5147)",
+    "description": (
+        "A flat map of the whole Earth showing the air temperature 2 meters above the ground, "
+        "hour by hour from 30 October to 14 November 2026, from NASA's GEOS-FP weather model. "
+        "Colors run from dark blue, white and purple (-40 C) through blue, cyan, yellow, orange "
+        "and red to dark red and grey (+40 C). The tropics stay warm and steady, deserts heat up "
+        "every afternoon, and the Arctic, Siberia and northern Canada get colder as winter arrives."
+    ),
+    "listening_guide": [
+        "Five held voices, one for each band of latitude, from the Arctic to Antarctica. Warmer = higher. Each step up or down is about 1 degree C.",
+        "Listen to the Arctic voice sink as winter sets in, and the Antarctic voice rise with the southern spring.",
+        "Plucks = places hotter than 30 C. Hotter = higher and louder.",
+        "Every day the plucks sweep from right to left: afternoon heat moves west with the sun, from Asia to Africa to the Americas.",
+        "Wind = how much of the Northern Hemisphere is below freezing. It grows as winter comes.",
+        "A chime rings at the start of every day (midnight UTC).",
+    ],
+
+    "start_time": "2026-10-30T09:00",   # 30 Oct 05:00 EDT on the first frame = 09:00 UTC
+    "hours_per_frame": 1.0,
+    "slow_down": 1.5,
+    "smooth_video": True,               # blend frames so the slowed video isn't choppy
+
+    "map": {"lon_min": -180, "lon_max": 180, "lat_max": 90, "lat_min": -90},
+
+    # Official color bar image (from the SVS 5147 page) and what its two ends mean.
+    # The bar is found in the image automatically.
+    "colorbar": {"image": "colorbars/gmao_t2m.png", "min": -40, "max": 40},
+    "units": "C",
+    "max_color_distance": 40,           # pixels further than this from any scale color are ignored
+    "ignore": [
+        (0, 0, 360, 80),                # NASA / GMAO logo
+        (0, 920, 505, 1024),            # date/time stamp
+    ],
+    "hot_threshold": 30,                # "hot" for the heat plucks
+    "cold_threshold": 0,                # freezing
+    "very_cold_threshold": -20,
+
+    "sounds": "sounds/gmao_t2m.toml",
+}
+
+PRESETS = {p["id"]: p for p in [IMERG, GMAO_T2M]}

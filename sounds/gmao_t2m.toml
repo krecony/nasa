@@ -1,0 +1,115 @@
+# =============================================================================
+#  Earth Jukebox - sound settings for "Near-Surface Temperature (GEOS-FP)"
+# =============================================================================
+#
+#  Edit anything here, then run (fast, skips the video):
+#     py sonify.py gmao_t2m videos/gmao_t2m_2048x1024.mp4 --no-video
+#  and listen to output/gmao_t2m/sonification.wav
+#
+#  Layers in this track:  choir, heat, frost, chime
+#     --only heat,choir     hear just those layers
+#     --stems               save every layer as its own WAV
+#
+#  INSTRUMENTS (same as the rain track):
+#     instrument = "pluck"                 built-in: marimba, bell, pluck, sine
+#     sample = "samples/my_harp_C4.wav"    your own WAV file
+#     root = "C4"                          the note your recording plays
+#  Any line you delete falls back to its default (see jukebox/config.py).
+# =============================================================================
+
+
+[music]
+key = "E"                    # C, C#, D, D#, E, F, F#, G, G#, A, A#, B
+scale = "minor_pentatonic"   # major_pentatonic, minor_pentatonic, major, minor, dorian,
+                             # lydian, mixolydian, harmonic_minor, blues, whole_tone, chromatic
+
+
+[mix]
+reverb_seconds = 2.8
+reverb_wet = 0.3
+peak = 0.89
+
+
+# --- Choir: 5 held voices, one per band of latitude -----------------------------
+# Arctic (60-90N), northern mid-latitudes, tropics, southern mid-latitudes, Antarctic.
+# Each voice starts on a note set by the band's average temperature (colder = lower)
+# and moves one scale step for every `degrees_per_step` the band warms or cools.
+[choir]
+enabled = true
+volume = 0.14
+
+instrument = "pad"
+harmonics = [1.0, 0.35, 0.15, 0.06]   # more/larger = brighter
+detune_cents = 6                      # chorus width
+# sample = "samples/my_choir_A3.wav"   # a long held note; looped and re-pitched
+# root = "A3"
+# crossfade = 0.3
+
+lowest_note = "E2"       # note for `coldest`...
+highest_note = "E5"      # ...and for `warmest`
+coldest = -40            # degrees C
+warmest = 35
+degrees_per_step = 1.0   # smaller = voices move more
+glide = 0.4              # seconds to slide between notes
+hysteresis = 0.3         # 0..0.5: ignore small wobbles around a note
+smoothing = 5            # frames of averaging before turning into notes
+pans = [-0.8, -0.4, 0.0, 0.4, 0.8]          # stereo position per voice (Arctic ... Antarctic)
+band_volumes = [0.8, 1.0, 0.9, 1.0, 0.8]    # loudness per voice
+
+
+# --- Heat: a pluck for places above 30 C ------------------------------------------
+# Every afternoon the heat moves west with the sun, so the plucks sweep right -> left.
+[heat]
+enabled = true
+volume = 0.42
+
+instrument = "pluck"     # marimba, bell, pluck, sine
+decay = 0.5
+brightness = 0.6
+attack = 0.0
+# sample = "samples/example_kalimba_C5.wav"
+# root = "C5"
+
+per_second_min = 2       # plucks per second when the hot area is smallest...
+per_second_max = 22      # ...and largest
+lowest_note = "E4"       # note for `hot_from`...
+highest_note = "E6"      # ...and for `hot_to`
+hot_from = 30            # degrees C
+hot_to = 42
+pitch_jitter = 1
+quiet = 0.4              # loudness at hot_from (0..1)
+loud = 1.0               # loudness at hot_to
+stereo_width = 0.95      # west = left, east = right
+
+
+# --- Frost: wind that grows with the frozen area ------------------------------------
+[frost]
+enabled = true
+volume = 0.35
+
+texture = "noise"        # noise (band of noise) or rumble (low)
+low = 300                # Hz, noise: lowest frequency
+high = 2500              # Hz, noise: highest frequency
+cutoff = 110             # Hz, rumble only
+# sample = "samples/example_rain_loop.wav"   # any recording, looped
+measure = "freeze_nh"    # freeze_nh   = share of the Northern Hemisphere below 0 C
+                         # freeze_area = share of the whole globe below 0 C
+                         # cold_area   = share of the globe below -20 C
+level_min = 0.15         # volume when the frozen area is smallest (0..1)
+curve = 1.0              # >1 = only loud when the frozen area is largest
+
+
+# --- Chime: rings at midnight UTC, every day ----------------------------------------
+[chime]
+enabled = true
+volume = 0.1
+
+instrument = "bell"
+decay = 2.2
+brightness = 0.5
+attack = 0.005
+# sample = "samples/my_bell_C5.wav"
+# root = "C5"
+
+note = "E5"
+add_fifth = true

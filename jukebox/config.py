@@ -1,6 +1,6 @@
 """Loading the sound settings file (sounds/*.toml).
 
-DEFAULTS below is the fallback for every setting, so you can delete lines
+The DEFAULTS below are the fallback for every setting, so you can delete lines
 from the .toml file and they'll go back to these values. Unknown settings
 (usually typos) are reported so they don't silently do nothing.
 """
@@ -16,7 +16,7 @@ except ImportError:                     # pragma: no cover
     except ImportError:
         raise SystemExit("Reading sounds/*.toml needs Python 3.11+ (or: py -m pip install tomli)")
 
-DEFAULTS = {
+RAIN_DEFAULTS = {
     "music": {
         "key": "D",
         "scale": "major_pentatonic",
@@ -59,10 +59,46 @@ DEFAULTS = {
     },
 }
 
-LAYERS = ["pad", "drops", "thunder", "snow", "chime"]
+# Defaults for "field" tracks (a value everywhere, e.g. temperature)
+FIELD_DEFAULTS = {
+    "music": {"key": "E", "scale": "minor_pentatonic"},
+    "mix": {"reverb_seconds": 2.8, "reverb_wet": 0.3, "peak": 0.89},
+    "choir": {
+        "enabled": True, "volume": 0.14,
+        "instrument": "pad", "harmonics": [1.0, 0.35, 0.15, 0.06], "detune_cents": 6.0,
+        "sample": "", "root": "C4", "crossfade": 0.3,
+        "lowest_note": "E2", "highest_note": "E5", "coldest": -40.0, "warmest": 35.0,
+        "degrees_per_step": 1.0, "glide": 0.4, "hysteresis": 0.3, "smoothing": 5,
+        "pans": [-0.8, -0.4, 0.0, 0.4, 0.8], "band_volumes": [0.8, 1.0, 0.9, 1.0, 0.8],
+    },
+    "heat": {
+        "enabled": True, "volume": 0.42,
+        "instrument": "pluck", "decay": 0.5, "brightness": 0.6, "attack": 0.0,
+        "sample": "", "root": "C4", "pitched": True, "length": 0.0,
+        "per_second_min": 2.0, "per_second_max": 22.0,
+        "lowest_note": "E4", "highest_note": "E6", "hot_from": 30.0, "hot_to": 42.0,
+        "pitch_jitter": 1, "quiet": 0.4, "loud": 1.0, "stereo_width": 0.95,
+    },
+    "frost": {
+        "enabled": True, "volume": 0.35,
+        "texture": "noise", "cutoff": 110.0, "low": 300.0, "high": 2500.0, "sample": "",
+        "measure": "freeze_nh", "level_min": 0.15, "curve": 1.0,
+    },
+    "chime": {
+        "enabled": True, "volume": 0.1,
+        "instrument": "bell", "decay": 2.2, "brightness": 0.5, "attack": 0.005,
+        "sample": "", "root": "C4", "pitched": True, "length": 0.0,
+        "note": "E5", "add_fifth": True,
+    },
+}
+
+DEFAULTS = {"categories": RAIN_DEFAULTS, "field": FIELD_DEFAULTS}
+LAYERS_BY_KIND = {"categories": ["pad", "drops", "thunder", "snow", "chime"],
+                  "field": ["choir", "heat", "frost", "chime"]}
+LAYERS = LAYERS_BY_KIND["categories"]
 
 
-def load_sounds(path):
+def load_sounds(path, kind="categories"):
     path = Path(path)
     if not path.exists():
         raise SystemExit(f"Sound settings file not found: {path}")
@@ -72,7 +108,7 @@ def load_sounds(path):
         except tomllib.TOMLDecodeError as e:
             raise SystemExit(f"There's a typo in {path.name}: {e}")
 
-    cfg = copy.deepcopy(DEFAULTS)
+    cfg = copy.deepcopy(DEFAULTS[kind])
     for section, values in user.items():
         if section not in cfg:
             print(f"! {path.name}: unknown section [{section}] ignored (sections: {', '.join(cfg)})")
