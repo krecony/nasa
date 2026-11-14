@@ -43,3 +43,38 @@ def plot_features(feats, times, layers, out_path, day_starts=()):
     fig.tight_layout()
     fig.savefig(out_path, dpi=110)
     plt.close(fig)
+
+
+def plot_field(feats, times, out_path, day_starts=(), units="C"):
+    from .field import LAT_NAMES
+    fig, axes = plt.subplots(4, 1, figsize=(11, 9), sharex=True)
+
+    ax = axes[0]
+    ax.plot(times, [f["mean"] for f in feats], color="#c0392b")
+    ax.set_ylabel(f"global mean\n({units})")
+
+    ax = axes[1]
+    lat = np.array([f["lat_mean"] for f in feats])
+    for b, name in enumerate(LAT_NAMES):
+        ax.plot(times, lat[:, b], label=name)
+    ax.set_ylabel(f"latitude bands\n({units}) = choir")
+    ax.legend(loc="center left", bbox_to_anchor=(1.0, 0.5), frameon=False, fontsize=8)
+
+    ax = axes[2]
+    hot = np.array([f["band_hot"] for f in feats]).T * 100
+    ax.imshow(hot, aspect="auto", origin="lower", cmap="Reds", extent=[times[0], times[-1], -180, 180])
+    ax.set_ylabel("hot area by longitude\n(W -> E) = plucks")
+
+    ax = axes[3]
+    ax.plot(times, [f["freeze_nh"] * 100 for f in feats], color="#3b6fd8")
+    ax.set_ylabel("% of N. Hemisphere\nbelow freezing = wind")
+    ax.set_xlabel("seconds (in the soundtrack)")
+
+    for a in axes:
+        for d in day_starts:
+            a.axvline(d, color="#bbb", lw=0.6, zorder=0)
+        a.spines[["top", "right"]].set_visible(False)
+    fig.suptitle("Features extracted from the video (grey lines = new day)")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=110)
+    plt.close(fig)

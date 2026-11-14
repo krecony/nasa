@@ -3,7 +3,9 @@
 Turning NASA Earth Information Center visualizations into music, so the data can be
 heard as well as seen. Built for the "Earth Jukebox" challenge.
 
-**First track:** a week of global rain and snow (NASA GPM IMERG), 7–14 Nov 2026.
+**Tracks:**
+- **Global Rain and Snow (IMERG):** a week of rain and snow, 7–14 Nov 2026 (`imerg`)
+- **Near-Surface Temperature (GEOS-FP):** hourly air temperature, 30 Oct–14 Nov 2026 (`gmao_t2m`)
 
 ## How it works
 
@@ -60,10 +62,13 @@ Put the source video in `videos/`, then:
 
 ```
 py sonify.py imerg videos/imergert_1080p_30.mp4
+py sonify.py gmao_t2m videos/gmao_t2m_2048x1024.mp4
 ```
 
 The first run takes about half a minute; after that the video analysis is cached, so
 re-running with different sounds takes a few seconds. Results:
+
+(Examples use `imerg`; every track works the same way.)
 
 - `output/imerg/sonification.wav`: the soundtrack
 - `output/imerg/features.png`: plot of the numbers (look at this first when tuning)
@@ -74,7 +79,8 @@ re-running with different sounds takes a few seconds. Results:
 
 ## Change the sounds
 
-Everything about the sound is in **`sounds/imerg.toml`**, a commented settings file:
+Everything about a track's sound is in its own file, **`sounds/imerg.toml`** or
+**`sounds/gmao_t2m.toml`**, a commented settings file:
 key, scale, chords, each layer's instrument, volume, and how the data drives it (drops per
 second, note range, loudness, thunder threshold, …). Edit it and re-run:
 
@@ -101,7 +107,7 @@ Handy options while tweaking:
 | Option | What it does |
 |---|---|
 | `--no-video` | skip building the website video (faster) |
-| `--only drops,thunder` | hear only those layers (`pad, drops, thunder, snow, chime`) |
+| `--only drops,thunder` | hear only those layers (rain: `pad, drops, thunder, snow, chime`; temperature: `choir, heat, frost, chime`) |
 | `--stems` | also save each layer as its own WAV in `output/imerg/stems/` |
 | `--sounds sounds/x.toml` | use another settings file, so you can keep several versions |
 | `--seed 3` | a different random arrangement of the drops |
@@ -119,16 +125,39 @@ py -m http.server 8000
 Open http://localhost:8000. (Opening `index.html` directly won't work, because browsers
 block loading `tracks.json` from a file.)
 
+## The temperature track
+
+Temperature covers the whole map, so it gets its own music (`jukebox/compose_field.py`):
+
+| What you see                                        | What you hear                                  |
+|-----------------------------------------------------|------------------------------------------------|
+| Average temperature of 5 bands of latitude          | 5 held voices; 1 °C warmer = one note higher   |
+| Places above 30 °C                                  | Plucks; hotter = higher and louder             |
+| …where, west → east                                 | …left → right: they sweep right→left every day as afternoon heat follows the sun |
+| Share of the Northern Hemisphere below freezing     | Wind that grows as winter comes                |
+| A new day (midnight UTC)                            | Chime                                          |
+
+Colors are turned into °C with NASA's own color bar image (`colorbars/gmao_t2m.png`,
+from SVS page 5147). The bar is found in the image automatically, and only its two ends
+(−40 and 40) are written in the preset.
+
 ## Add a new visualization
 
-1. Download the video into `videos/`.
-2. In `jukebox/presets.py`, copy the `IMERG` preset and change: the color bar position
-   and values, the areas to ignore (legend, timestamp, logo), `start_time`,
-   `hours_per_frame`, the texts, and `sounds` (copy `sounds/imerg.toml` to start).
-3. Add it to `PRESETS` at the bottom and run `py sonify.py <id> videos/<file>.mp4`.
+Two kinds of video work:
+- **"field"**: a value everywhere on a flat world map (temperature, sea surface
+  temperature, …). Copy the `GMAO_T2M` preset.
+- **"categories"**: data only where something happens, with its color bar inside the
+  video (rain, …). Copy the `IMERG` preset.
 
-For a visualization without a color bar (e.g. white clouds) you'd swap the palette
-matching for a simple brightness/saturation mask in `features.py`.
+For a "field" video:
+1. Put the video in `videos/` and its color bar image in `colorbars/` (a screenshot of
+   the bar is fine).
+2. In `jukebox/presets.py`, copy the `GMAO_T2M` block and change: `id`, the texts, the
+   `colorbar` image and its `min`/`max`, `start_time` and `hours_per_frame` (read the
+   timestamps of the first two frames), and `sounds`. Optional: `ignore` boxes for logos
+   or labels drawn on top of the map. Add it to `PRESETS` at the bottom.
+3. Copy `sounds/gmao_t2m.toml` to `sounds/<id>.toml` and pick your instruments/samples.
+4. Run `py sonify.py <id> videos/<file>.mp4` and check `output/<id>/features.png`.
 
 ## Project structure
 
@@ -136,14 +165,18 @@ matching for a simple brightness/saturation mask in `features.py`.
 sonify.py            run the whole pipeline
 sounds/              sound settings (.toml): instruments, volumes, notes, mappings
 samples/             your own instrument WAV files
+colorbars/           color bar images (for "field" tracks)
 jukebox/
   presets.py         everything specific to one visualization (analysis side)
   config.py          reads the sound settings, with defaults
   video.py           reading frames
-  palette.py         color bar → numbers
-  features.py        numbers per frame
+  palette.py         color bar → numbers (rain track: bar inside the video)
+  colorbar.py        reads a color bar image (finds the bar automatically)
+  features.py        numbers per frame (rain track)
+  field.py           numbers per frame (temperature track)
   timeline.py        frame → date and soundtrack time
-  compose.py         the mapping from features to music (the "score")
+  compose.py         the mapping from features to music (the "score", rain track)
+  compose_field.py   the score for the temperature track
   instruments.py     built-in synths + loading/pitching/looping your WAV samples
   synth.py           low-level helpers (panning, pad tone, rumble, reverb)
   describe.py        accessible descriptions + CSV

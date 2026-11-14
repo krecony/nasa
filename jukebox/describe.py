@@ -82,3 +82,59 @@ def write_csv(feats, tl, layers, path):
                         round(L["lon_c"], 1), round(L["lat_c"], 1)]
             row += [f["hot_place"], round(f["change"], 4), int(f["hold"])]
             w.writerow(row)
+
+
+# --- field tracks (e.g. temperature) ------------------------------------------------
+
+def field_cues(feats, tl, preset):
+    """One sentence per day for a field track: hottest/coldest place, freezing share."""
+    u = preset.get("units", "")
+    deg = "°C" if u == "C" else (" " + u if u else "")
+    cues = []
+    ft, data_end = tl["frame_time"], tl["data_end"]
+    starts = tl["day_starts"]
+    ends = starts[1:] + [data_end]
+    step_h = preset["hours_per_frame"]
+    freeze = np.array([f["freeze_nh"] for f in feats]) * 100
+    prev = None
+    for d0, d1 in zip(starts, ends):
+        if d1 <= d0:
+            continue
+        label = f"{tl['dates'][d0]:%a %d %b}"
+        if tl["dates"][d0].hour != 0:
+            label += f" (from {tl['dates'][d0]:%H:%M} UTC)"
+        elif (d1 - d0) * step_h < 23:
+            label += f" (until {tl['dates'][d1 - 1]:%H:%M} UTC)"
+        day = feats[d0:d1]
+        hot = max(day, key=lambda f: f["hottest"][0])
+        cold = min(day, key=lambda f: f["coldest"][0])
+        fz = freeze[d0:d1].mean()
+        trend = ""
+        if prev is not None:
+            if fz > prev + 0.5:
+                trend = " The frozen area is growing."
+            elif fz < prev - 0.5:
+                trend = " The frozen area is shrinking."
+        prev = fz
+        text = (f"{label}. Hottest: {hot['hottest_place']}, about {hot['hottest'][0]:.0f}{deg}. "
+                f"Coldest outside Antarctica: {cold['coldest_place']}, about {cold['coldest'][0]:.0f}{deg}. "
+                f"{fz:.0f}% of the Northern Hemisphere is below freezing.{trend}")
+        end = ft[d1] if d1 < len(ft) else tl["duration"] + 2.0
+        cues.append((ft[d0], end, text))
+    return cues
+
+
+def write_field_csv(feats, tl, path):
+    import csv
+    from .field import LAT_NAMES
+    with open(path, "w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["frame", "soundtrack_s", "date_utc", "global_mean"] + [f"mean_{n}" for n in LAT_NAMES]
+                   + ["hot_area_pct", "freeze_nh_pct", "freeze_area_pct", "very_cold_area_pct",
+                      "hottest", "hottest_place", "coldest_outside_antarctica", "coldest_place"])
+        for i, f in enumerate(feats):
+            w.writerow([i, round(tl["frame_time"][i], 3), tl["dates"][i].strftime("%Y-%m-%d %H:%M"),
+                        round(f["mean"], 2)] + [round(x, 2) for x in f["lat_mean"]]
+                       + [round(f["hot_area"] * 100, 3), round(f["freeze_nh"] * 100, 2),
+                          round(f["freeze_area"] * 100, 2), round(f["cold_area"] * 100, 2),
+                          round(f["hottest"][0], 1), f["hottest_place"], round(f["coldest"][0], 1), f["coldest_place"]])
