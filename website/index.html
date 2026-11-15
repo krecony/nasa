@@ -29,9 +29,10 @@
   .hero.cut canvas { opacity: 0; }
   .hero main { transition: opacity .4s ease, transform .7s ease; }
   .hero.away main { opacity: 0; transform: scale(1.08); pointer-events: none; }
-  .screen { position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: hidden; border-radius: 4px; background: #10181d; opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s linear .2s; }
+  .screen { position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: hidden; border-radius: 4px; background: #010d00; opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s linear .2s; }
   .hero.arrived .screen { opacity: 1; visibility: visible; transition: opacity .35s ease; }
   .screen iframe { display: block; width: 100%; height: 100%; border: 0; }
+  .hero.arrived { touch-action: auto; } /* lets the page inside the panel scroll on touch screens */
   .back { position: absolute; left: 24px; top: 24px; display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 18px 0 14px; border-radius: 999px; border: 1px solid rgba(243,238,224,0.28); background: rgba(11,24,32,0.55); color: #F3EEE0; font: 500 14px/1 Inter, system-ui, sans-serif; cursor: pointer; opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s linear .2s, background-color .2s ease, border-color .2s ease; }
   .hero.arrived .back { opacity: 1; visibility: visible; transition: opacity .35s ease, background-color .2s ease, border-color .2s ease; }
   .back:hover { background: rgba(11,24,32,0.8); border-color: rgba(243,238,224,0.5); }
@@ -45,9 +46,9 @@
     <!-- The button flies the camera to the panel in the clearing. The href is only used as a fallback when WebGL is unavailable. -->
     <a class="cta" href="index2.html">Check it out<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></a>
   </main>
-  <!-- The panel lying in the forest clearing. It is blank for now: to show the visualisation page, put it inside,
-       e.g. <iframe src="index2.html" title="Earth Jukebox player"></iframe>. The script sizes and places this element. -->
-  <div class="screen" id="screen"></div>
+  <!-- The panel lying in the forest clearing. It shows the page named in data-src, which stays its own file.
+       The page is loaded when the flight starts; the script sizes and places this element. -->
+  <div class="screen" id="screen"><iframe id="screen-frame" title="Earth Jukebox player" data-src="index2.html"></iframe></div>
   <button type="button" class="back" id="back">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg>
     <span>To the forest</span>
@@ -627,6 +628,7 @@ void main(){
     root.addEventListener('pointermove', onMove);
     root.addEventListener('pointerleave', onLeave);
     root.addEventListener('pointercancel', onLeave);
+    if (screenEl) screenEl.addEventListener('pointerenter', onLeave); // the cursor is over the panel's page, not the forest
 
     const segDist = (px, py, ax, ay, bx, by) => {
       const vx = bx - ax, vy = by - ay;
@@ -764,7 +766,7 @@ void main(){
         audio.whooshLP.frequency.setTargetAtTime(320 + sp * 500, at, 0.2);
         audio.bedG.gain.setTargetAtTime(0.02 + 0.012 * Math.sin(time * 0.65), at, 0.5);
         if (audio.pan && rustSum > 0.05) audio.pan.pan.setTargetAtTime(Math.max(-0.8, Math.min(0.8, (rustX / rustSum) * 2 - 1)), at, 0.15);
-        audio.master.gain.setTargetAtTime(vol(), at, 0.2);
+        audio.master.gain.setTargetAtTime(vol() * (1 - 0.75 * go), at, 0.2); // forest sound drops back at the panel, so the tracks can be heard
       }
 
       // draw
@@ -863,9 +865,20 @@ void main(){
   // ---- "Check it out": fly to the panel; the back button, Esc and the browser's back button fly home ----
   var hero = document.getElementById('hero');
   var heroMain = hero.querySelector('main');
+  var frame = document.getElementById('screen-frame');
+  var frameLoaded = false;
   var show = function (v, instant) {
     hero.classList.toggle('away', !!v);
     heroMain.inert = !!v;
+    if (v && !frameLoaded) { frame.src = frame.getAttribute('data-src'); frameLoaded = true; }
+    if (!v && frameLoaded) {
+      // leaving the panel: stop anything that is playing. If the page can't be reached from here
+      // (opened straight from disk), unload it instead; it is loaded again on the next visit.
+      var doc = null;
+      try { doc = frame.contentDocument; } catch (e) { doc = null; }
+      if (doc) Array.prototype.forEach.call(doc.querySelectorAll('video, audio'), function (m) { m.pause(); });
+      else { frame.src = 'about:blank'; frameLoaded = false; }
+    }
     forest.setView(v, instant);
   };
   var goHome = function () {
