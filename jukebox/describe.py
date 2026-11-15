@@ -87,9 +87,14 @@ def write_csv(feats, tl, layers, path):
 # --- field tracks (e.g. temperature) ------------------------------------------------
 
 def field_cues(feats, tl, preset):
-    """One sentence per day for a field track: hottest/coldest place, freezing share."""
+    """One sentence per day for a field track: highest/lowest place, and the share of the
+    Northern Hemisphere below cold_threshold. The words come from track.toml (caption_*)."""
     u = preset.get("units", "")
     deg = "°C" if u == "C" else (" " + u if u else "")
+    high_word = preset.get("caption_high") or "Highest"
+    low_word = preset.get("caption_low") or "Lowest outside Antarctica"
+    share_words = preset.get("caption_share") or f"below {preset.get('cold_threshold')}{deg}"
+    share_name = preset.get("caption_share_name") or "That share"
     cues = []
     ft, data_end = tl["frame_time"], tl["data_end"]
     starts = tl["day_starts"]
@@ -112,13 +117,13 @@ def field_cues(feats, tl, preset):
         trend = ""
         if prev is not None:
             if fz > prev + 0.5:
-                trend = " The frozen area is growing."
+                trend = f" {share_name} is growing."
             elif fz < prev - 0.5:
-                trend = " The frozen area is shrinking."
+                trend = f" {share_name} is shrinking."
         prev = fz
-        text = (f"{label}. Hottest: {hot['hottest_place']}, about {hot['hottest'][0]:.0f}{deg}. "
-                f"Coldest outside Antarctica: {cold['coldest_place']}, about {cold['coldest'][0]:.0f}{deg}. "
-                f"{fz:.0f}% of the Northern Hemisphere is below freezing.{trend}")
+        text = (f"{label}. {high_word}: {hot['hottest_place']}, about {hot['hottest'][0]:.0f}{deg}. "
+                f"{low_word}: {cold['coldest_place']}, about {cold['coldest'][0]:.0f}{deg}. "
+                f"{fz:.0f}% of the Northern Hemisphere is {share_words}.{trend}")
         end = ft[d1] if d1 < len(ft) else tl["duration"] + 2.0
         cues.append((ft[d0], end, text))
     return cues

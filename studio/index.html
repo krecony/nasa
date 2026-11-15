@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Studio · Earth Jukebox</title>
+<link rel="stylesheet" href="studio.css">
+<link rel="icon" href="data:,">
+</head>
+<body>
+<a class="skip" href="#editor">Skip to the form</a>
+<header class="top">
+  <div>
+    <h1>Earth Jukebox <span>Studio</span></h1>
+    <p class="muted">Add a NASA video, tell it what the colors mean, choose the sounds, then publish it to the jukebox.</p>
+  </div>
+  <a class="btn ghost" href="/">Back to the jukebox</a>
+</header>
+
+<div class="layout">
+  <nav class="side" aria-labelledby="list-heading">
+    <h2 id="list-heading">Tracks</h2>
+    <ul id="track-list"></ul>
+    <div class="side-actions">
+      <button type="button" class="btn" id="new-track">+ New track</button>
+      <label class="btn ghost file-btn">Import a zip…
+        <input type="file" id="import-file" accept=".zip,application/zip">
+      </label>
+    </div>
+    <p class="muted small">Tracks live in the <code>tracks/</code> folder: one folder per track.</p>
+  </nav>
+
+  <main id="editor" tabindex="-1">
+    <section class="card intro" id="welcome">
+      <h2>Pick a track or start a new one</h2>
+      <p>The form is for tracks that show a value everywhere on the map (temperature, wind, ...).
+         The rain track can be built, published and exported here, but its settings stay in its .toml files.</p>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="status" role="status" aria-live="polite"></div>
+<script src="studio.js"></script>
+</body>
+</html>

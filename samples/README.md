@@ -1,6 +1,7 @@
 # Your own instruments
 
-Put WAV files here and point to them from a sound settings file (`sounds/*.toml`):
+Put WAV files here and point to them from a track's sound settings (`tracks/<name>/sounds.toml`).
+A WAV only one track uses can also go in that track's folder, e.g. `tracks/WindSpeed/samples/`:
 
 ```toml
 [drops]
@@ -8,7 +9,7 @@ sample = "samples/my_piano_C4.wav"
 root = "C4"          # the note the recording plays
 ```
 
-Then run `py sonify.py imerg videos/imergert_1080p_30.mp4 --no-video` and listen.
+Then run `py sonify.py imerg --no-video` and listen.
 
 ## What works best
 
@@ -42,8 +43,8 @@ Then run `py sonify.py imerg videos/imergert_1080p_30.mp4 --no-video` and listen
 - `example_kalimba_C5.wav`: a kalimba-like note, root C5. Try it for `drops`.
 - `example_rain_loop.wav`: a rain hiss texture. Try it as the `thunder` texture.
 
-`sounds/imerg_samples_demo.toml` uses both:
+`tracks/imerg/sounds_samples_demo.toml` uses both:
 
 ```
-py sonify.py imerg videos/imergert_1080p_30.mp4 --no-video --sounds sounds/imerg_samples_demo.toml
+py sonify.py imerg --no-video --sounds tracks/imerg/sounds_samples_demo.toml
 ```

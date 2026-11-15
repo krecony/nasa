@@ -75,23 +75,45 @@ def read_colorbar(spec, root):
         raise SystemExit(f"Can't open the color bar image: {path}")
     if img.ndim == 2:
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    alpha = None
     if img.shape[2] == 4:                       # see-through PNG: put it on mid-grey
-        a = img[:, :, 3:4].astype(float) / 255
+        alpha = img[:, :, 3]
+        a = alpha[:, :, None].astype(float) / 255
         img = (img[:, :, :3] * a + 128 * (1 - a)).astype(np.uint8)
     img = img[:, :, ::-1].copy()
     x0, y0, x1, y1 = spec.get("box") or find_bar(img)
+    if alpha is None:
+        alpha = np.full(img.shape[:2], 255, np.uint8)
     if (x1 - x0) >= (y1 - y0):
         mid, half = (y0 + y1) // 2, max((y1 - y0) // 4, 1)
         colors = np.median(img[mid - half:mid + half + 1, x0:x1], axis=0)
+        opaque = np.median(alpha[mid - half:mid + half + 1, x0:x1], axis=0)
     else:
         mid, half = (x0 + x1) // 2, max((x1 - x0) // 4, 1)
         colors = np.median(img[y0:y1, mid - half:mid + half + 1], axis=1)[::-1]
+        opaque = np.median(alpha[y0:y1, mid - half:mid + half + 1], axis=1)[::-1]
     if spec.get("reverse"):
-        colors = colors[::-1]
+        colors, opaque = colors[::-1], opaque[::-1]
     t = (np.arange(len(colors)) + 0.5) / len(colors)
     lo, hi = float(spec["min"]), float(spec["max"])
     if spec.get("scale", "linear") == "log":
         values = lo * (hi / lo) ** t
     else:
         values = lo + t * (hi - lo)
-    return colors.astype(float), values
+    # a see-through part of the bar (e.g. "calm" on NASA's wind bar) isn't a color in the video:
+    # the map just shows through there, so it can't be matched (see unmatched_value in track.toml)
+    keep = opaque >= 128
+    # keep only the longest solid stretch (drops a frame line left over next to a see-through part)
+    edges = np.flatnonzero(np.diff(np.concatenate([[0], keep.astype(int), [0]])))
+    if len(edges):
+        runs = list(zip(edges[::2], edges[1::2]))
+        a, b = max(runs, key=lambda r: r[1] - r[0])
+        keep = np.zeros_like(keep); keep[a:b] = True
+    # parts of the bar whose colors also appear on the map itself (e.g. grey = land) can be left out
+    if spec.get("ignore_above") is not None:
+        keep &= values <= float(spec["ignore_above"])
+    if spec.get("ignore_below") is not None:
+        keep &= values >= float(spec["ignore_below"])
+    if keep.sum() < 2:
+        raise SystemExit(f"The color bar in {path.name} looks fully see-through (or fully ignored).")
+    return colors[keep].astype(float), values[keep]

@@ -1,28 +1,29 @@
-"""The "score" for field tracks (a value everywhere, e.g. temperature).
+"""The "score" for field tracks (a value everywhere: temperature, wind, ...).
 
-  What you see                                   What you hear              Settings
-  ---------------------------------------------  -------------------------  ---------
-  Average temperature of 5 latitude bands        5 sustained voices         [choir]
-    (Arctic, N mid-lat, tropics, S mid-lat,        warmer = higher note
-     Antarctic)
-  Places hotter than 30 C                        Plucks                     [heat]
-    ...how much of the globe                       ...plucks per second
-    ...where, west -> east                         ...left -> right
-    ...how hot                                     ...pitch and loudness
-  Northern Hemisphere below freezing (0 C)       Wind texture               [frost]
-  A new day (00:00 UTC)                          Chime                      [chime]
+A track's sounds.toml is a list of sounds ([[sound]] blocks). Each sound has a kind:
 
-All numbers are in the sound settings file (sounds/gmao_t2m.toml).
+  kind          what it follows                                  what you hear
+  ------------  -----------------------------------------------  -------------------------------
+  voices        the average value in 5 bands of latitude         5 held notes; higher value =
+                (Arctic, N mid-lat, tropics, S mid-lat, Antarctic) higher note
+  hits          places whose value is inside `range`             short notes: more area in the
+                                                                 range = more notes; west->east =
+                                                                 left->right; value = pitch/loudness
+  background    the global average (measure = "mean"), or the    a looping texture whose volume
+                share of the globe inside `range` ("area")       follows it
+  chime         the start of every day (UTC)                     one note/chord per day
+
+All numbers live in tracks/<name>/sounds.toml; defaults are in config.py (SOUND_DEFAULTS).
 """
 
 import numpy as np
 
 from . import synth
 from .compose import normalize, per_sample, glide, notes_in_range, stereo
-from .config import LAYERS_BY_KIND
 from .features import smooth
 from .field import N_BANDS
 from .instruments import NoteInstrument, note_to_midi, texture, load_sample, repitch, loop_to_length
+from .ranges import Range
 from .synth import SAMPLE_RATE as SR
 
 
@@ -65,100 +66,129 @@ def sustained_voice(midi_per_frame, dt, n, c, base_dir):
     return out
 
 
+def _range(c, lo_default, hi_default):
+    r = c.get("range") or [None, None]
+    lo = r[0] if r[0] is not None else lo_default
+    hi = r[1] if len(r) > 1 and r[1] is not None else hi_default
+    return lo, hi
+
+
+# --- one function per kind --------------------------------------------------------------
+
+def voices(c, ctx):
+    music, feats, dt, n = ctx["music"], ctx["feats"], ctx["dt"], ctx["n"]
+    scale = notes_in_range(music["key"], music["scale"], c["lowest_note"], c["highest_note"])
+    lat = smooth(np.array([f["lat_mean"] for f in feats]), max(int(c["smoothing"]), 1))
+    low, high = _range(c, ctx["vmin"], ctx["vmax"])
+    bands = c["bands"] if c["bands"] else range(lat.shape[1])
+    buf = np.zeros((n, 2))
+    for b in bands:
+        # starting note from the band's average value, then every `units_per_step`
+        # of change moves the voice one scale step
+        avg = lat[ctx["valid"], b].mean()
+        base = np.interp(avg, [low, high], [0, len(scale) - 1])
+        steps = quantize(base + (lat[:, b] - avg) / c["units_per_step"], c["hysteresis"])
+        midi = np.array(scale)[np.clip(steps, 0, len(scale) - 1)]
+        vol = c["band_volumes"][b % len(c["band_volumes"])] if c["band_volumes"] else 1.0
+        tone = sustained_voice(midi, dt, n, c, ctx["base_dir"]) * vol * ctx["fade"]
+        buf += stereo(tone, c["pans"][b % len(c["pans"])] if c["pans"] else 0.0)
+    return buf
+
+
+def hits(c, ctx):
+    music, dt, n, ft, rng = ctx["music"], ctx["dt"], ctx["n"], ctx["ft"], ctx["rng"]
+    inst = NoteInstrument(c, ctx["base_dir"], c["name"])
+    scale = notes_in_range(music["key"], music["scale"], c["lowest_note"], c["highest_note"])
+    low, high = _range(c, ctx["vmin"], None)
+    rg = Range(ctx["edges"], low, high, ctx["log"])
+    amount = normalize(smooth(rg.area(ctx["hist"]), max(int(c["smoothing"]), 1)), ctx["valid"])
+    share, mean = rg.per_strip(ctx["hist"])
+    p_lo, p_hi = c["pitch_range"] if c.get("pitch_range") else (low, high if high is not None else ctx["vmax"])
+    band_pos = (np.arange(N_BANDS) + 0.5) / N_BANDS * 2 - 1
+    buf = np.zeros((n, 2))
+    for i in range(ctx["data_end"]):
+        w = share[i]
+        if w.sum() <= 0:
+            continue
+        per_s = c["per_second_min"] + (c["per_second_max"] - c["per_second_min"]) * amount[i]
+        for b in rng.choice(N_BANDS, rng.poisson(per_s * dt), p=w / w.sum()):
+            x01 = np.clip((mean[i, b] - p_lo) / ((p_hi - p_lo) or 1), 0, 1)
+            j = c["pitch_jitter"]
+            k = int(np.clip(round(x01 * (len(scale) - 1)) + rng.integers(-j, j + 1), 0, len(scale) - 1))
+            loud = c["quiet"] + (c["loud"] - c["quiet"]) * x01
+            synth.add_mono(buf, inst(synth.midi_to_hz(scale[k])), ft[i] + rng.uniform(0, dt),
+                           pan=band_pos[b] * c["stereo_width"], gain=loud * rng.uniform(0.7, 1.0))
+    return buf
+
+
+def background(c, ctx):
+    n, feats = ctx["n"], ctx["feats"]
+    if c["measure"] == "mean":
+        measure = np.array([f["mean"] for f in feats])
+    elif c["measure"] == "area":
+        low, high = _range(c, None, None)
+        measure = Range(ctx["edges"], low, high, ctx["log"]).area(ctx["hist"], c["hemisphere"])
+    else:
+        raise SystemExit(f"[{c['name']}] measure must be \"mean\" or \"area\", not \"{c['measure']}\"")
+    level = c["level_min"] + (1 - c["level_min"]) * normalize(smooth(measure, max(int(c["smoothing"]), 1)), ctx["valid"]) ** c["curve"]
+    env = glide(per_sample(level, ctx["ft"], n), 0.3) * ctx["fade"]
+    buf = np.zeros((n, 2))
+    if c["sample"]:
+        tex = texture(c, n, ctx["base_dir"], seed=1)
+        buf += np.stack([tex, np.roll(tex, int(0.37 * SR))], axis=1) * env[:, None]
+    else:
+        buf[:, 0] = texture(c, n, ctx["base_dir"], seed=1) * env
+        buf[:, 1] = texture(c, n, ctx["base_dir"], seed=2) * env
+    return buf
+
+
+def chime(c, ctx):
+    tl, ft, n = ctx["tl"], ctx["ft"], ctx["n"]
+    inst = NoteInstrument(c, ctx["base_dir"], c["name"])
+    m = note_to_midi(c["note"])
+    sound = inst(synth.midi_to_hz(m)).copy()
+    if c["add_fifth"]:
+        fifth = inst(synth.midi_to_hz(m + 7))
+        k = min(len(sound), len(fifth))
+        sound[:k] += 0.5 * fifth[:k]
+    buf = np.zeros((n, 2))
+    for d in tl["day_starts"]:
+        if d > 0 or tl["dates"][0].hour == 0:      # not on the first frame if that's mid-day
+            synth.add_mono(buf, sound, ft[d], pan=0.0)
+    return buf
+
+
+KINDS = {"voices": voices, "hits": hits, "background": background, "chime": chime}
+
+
 def render(feats, preset, tl, snd, seed=0, only=None):
-    music, base_dir = snd["music"], snd["_dir"]
-    rng = np.random.default_rng(seed)
-    nF, dt, ft = tl["n_frames"], tl["seconds_per_frame"], tl["frame_time"]
-    data_end = tl["data_end"]
+    """Render the soundtrack. Returns (stereo float32 mix, dict of stereo stems by sound name)."""
+    nF, dt, data_end = tl["n_frames"], tl["seconds_per_frame"], tl["data_end"]
     tail = 2.5
     n = int((tl["duration"] + tail) * SR)
-    valid = np.arange(nF) < data_end
-    active = [l for l in LAYERS_BY_KIND["field"] if snd[l]["enabled"] and (not only or l in only)]
-    band_pos = (np.arange(N_BANDS) + 0.5) / N_BANDS * 2 - 1
-
     t = np.arange(n) / SR
     end_t = data_end * dt
-    fade = np.clip(1 - (t - end_t) / (tail * 0.7), 0, 1) * np.clip(t / 0.5, 0, 1)
+    edges = np.asarray(feats[0]["hist_edges"])
+    cb = preset.get("colorbar") or {}
+    ctx = {
+        "feats": feats, "tl": tl, "music": snd["music"], "base_dir": snd["_dir"],
+        "rng": np.random.default_rng(seed), "n": n, "dt": dt, "ft": tl["frame_time"], "data_end": data_end,
+        "valid": np.arange(nF) < data_end,
+        "fade": np.clip(1 - (t - end_t) / (tail * 0.7), 0, 1) * np.clip(t / 0.5, 0, 1),
+        "hist": np.stack([f["hist"] for f in feats]).astype(float), "edges": edges,
+        "log": cb.get("scale") == "log", "vmin": float(edges[0]), "vmax": float(edges[-1]),
+    }
+
     stems = {}
-
-    # --- choir: one voice per latitude band -----------------------------------------
-    if "choir" in active:
-        c = snd["choir"]
-        scale = notes_in_range(music["key"], music["scale"], c["lowest_note"], c["highest_note"])
-        lat = smooth(np.array([f["lat_mean"] for f in feats]), max(int(c["smoothing"]), 1))
-        buf = np.zeros((n, 2))
-        for b in range(lat.shape[1]):
-            # starting note from the band's average temperature, then every
-            # `degrees_per_step` of change moves the voice one scale step
-            avg = lat[valid, b].mean()
-            base = np.interp(avg, [c["coldest"], c["warmest"]], [0, len(scale) - 1])
-            cont = base + (lat[:, b] - avg) / c["degrees_per_step"]
-            steps = quantize(cont, c["hysteresis"])
-            midi = np.array(scale)[np.clip(steps, 0, len(scale) - 1)]
-            vol = c["band_volumes"][b % len(c["band_volumes"])] if c["band_volumes"] else 1.0
-            tone = sustained_voice(midi, dt, n, c, base_dir) * vol * fade
-            buf += stereo(tone, c["pans"][b % len(c["pans"])] if c["pans"] else 0.0)
-        stems["choir"] = buf
-
-    # --- heat: plucks where it's hot -----------------------------------------------------
-    if "heat" in active:
-        c = snd["heat"]
-        inst = NoteInstrument(c, base_dir, "heat")
-        scale = notes_in_range(music["key"], music["scale"], c["lowest_note"], c["highest_note"])
-        hot = normalize(smooth(np.array([f["hot_area"] for f in feats]), 3), valid)
-        band_hot = np.array([f["band_hot"] for f in feats])
-        band_val = np.array([f["band_hot_val"] for f in feats])
-        buf = np.zeros((n, 2))
-        for i in range(data_end):
-            w = band_hot[i]
-            if w.sum() <= 0:
-                continue
-            per_s = c["per_second_min"] + (c["per_second_max"] - c["per_second_min"]) * hot[i]
-            for b in rng.choice(N_BANDS, rng.poisson(per_s * dt), p=w / w.sum()):
-                heat01 = np.clip((band_val[i, b] - c["hot_from"]) / (c["hot_to"] - c["hot_from"]), 0, 1)
-                j = c["pitch_jitter"]
-                k = int(np.clip(round(heat01 * (len(scale) - 1)) + rng.integers(-j, j + 1), 0, len(scale) - 1))
-                loud = c["quiet"] + (c["loud"] - c["quiet"]) * heat01
-                synth.add_mono(buf, inst(synth.midi_to_hz(scale[k])), ft[i] + rng.uniform(0, dt),
-                               pan=band_pos[b] * c["stereo_width"], gain=loud * rng.uniform(0.7, 1.0))
-        stems["heat"] = buf
-
-    # --- frost: wind that grows with the frozen area ------------------------------------
-    if "frost" in active:
-        c = snd["frost"]
-        measure = np.array([f[c["measure"]] for f in feats])
-        level = c["level_min"] + (1 - c["level_min"]) * normalize(smooth(measure, 9), valid) ** c["curve"]
-        env = glide(per_sample(level, ft, n), 0.3) * fade
-        buf = np.zeros((n, 2))
-        if c["sample"]:
-            tex = texture(c, n, base_dir, seed=1)
-            buf += np.stack([tex, np.roll(tex, int(0.37 * SR))], axis=1) * env[:, None]
-        else:
-            buf[:, 0] = texture(c, n, base_dir, seed=1) * env
-            buf[:, 1] = texture(c, n, base_dir, seed=2) * env
-        stems["frost"] = buf
-
-    # --- chime at each new day ------------------------------------------------------------
-    if "chime" in active:
-        c = snd["chime"]
-        inst = NoteInstrument(c, base_dir, "chime")
-        m = note_to_midi(c["note"])
-        sound = inst(synth.midi_to_hz(m)).copy()
-        if c["add_fifth"]:
-            fifth = inst(synth.midi_to_hz(m + 7))
-            k = min(len(sound), len(fifth))
-            sound[:k] += 0.5 * fifth[:k]
-        buf = np.zeros((n, 2))
-        for d in tl["day_starts"]:
-            if tl["dates"][d].hour == 0:
-                synth.add_mono(buf, sound, ft[d], pan=0.0)
-        stems["chime"] = buf
+    for c in snd["sounds"]:
+        if not c["enabled"] or (only and c["name"] not in only):
+            continue
+        stems[c["name"]] = KINDS[c["kind"]](c, ctx) * c["volume"]
 
     if not stems:
-        raise SystemExit("All layers are muted - nothing to render.")
+        raise SystemExit("All sounds are muted - nothing to render.")
     mx = snd["mix"]
-    stems = {k: synth.reverb(s * snd[k]["volume"], seconds=mx["reverb_seconds"], wet=mx["reverb_wet"])
-             for k, s in stems.items()}
+    stems = {k: synth.reverb(s, seconds=mx["reverb_seconds"], wet=mx["reverb_wet"]) for k, s in stems.items()}
     mix = sum(stems.values())
     scale_to_peak = mx["peak"] / (np.abs(np.tanh(mix * 1.2)).max() + 1e-9)
     audio = (np.tanh(mix * 1.2) * scale_to_peak).astype(np.float32)

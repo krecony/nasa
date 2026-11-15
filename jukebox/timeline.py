@@ -28,10 +28,9 @@ def build_timeline(feats, preset, fps):
     dates = [start + step * min(i, data_end - 1) for i in range(n)]
     seconds_per_frame = preset["slow_down"] / fps
 
-    # frames where a new day (00:00 UTC) starts
-    day_starts = [i for i in range(data_end) if dates[i].hour == 0 and dates[i].minute == 0]
-    if not day_starts or day_starts[0] != 0:
-        day_starts = [0] + day_starts
+    # frames where a new day (UTC) starts: the first frame of each new date,
+    # so it also works when frames don't land exactly on midnight (e.g. 70-minute steps)
+    day_starts = [0] + [i for i in range(1, data_end) if dates[i].date() != dates[i - 1].date()]
     day_of_frame = np.searchsorted(day_starts, np.arange(n), side="right") - 1
 
     return {

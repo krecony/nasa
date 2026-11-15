@@ -1,7 +1,7 @@
 # Demo: the same data with different instruments, using the WAV files in samples/.
-# Any setting not listed here uses the default (see sounds/imerg.toml for all options).
+# Any setting not listed here uses the default (see sounds.toml in this folder for all options).
 #
-#   py sonify.py imerg videos/imergert_1080p_30.mp4 --no-video --sounds sounds/imerg_samples_demo.toml
+#   py sonify.py imerg --no-video --sounds tracks/imerg/sounds_samples_demo.toml
 
 [music]
 key = "A"

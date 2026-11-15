@@ -45,7 +45,7 @@ def plot_features(feats, times, layers, out_path, day_starts=()):
     plt.close(fig)
 
 
-def plot_field(feats, times, out_path, day_starts=(), units="C"):
+def plot_field(feats, times, out_path, day_starts=(), units="C", hot=None, cold=None):
     from .field import LAT_NAMES
     fig, axes = plt.subplots(4, 1, figsize=(11, 9), sharex=True)
 
@@ -57,17 +57,17 @@ def plot_field(feats, times, out_path, day_starts=(), units="C"):
     lat = np.array([f["lat_mean"] for f in feats])
     for b, name in enumerate(LAT_NAMES):
         ax.plot(times, lat[:, b], label=name)
-    ax.set_ylabel(f"latitude bands\n({units}) = choir")
+    ax.set_ylabel(f"latitude bands\n({units}) = voices")
     ax.legend(loc="center left", bbox_to_anchor=(1.0, 0.5), frameon=False, fontsize=8)
 
     ax = axes[2]
-    hot = np.array([f["band_hot"] for f in feats]).T * 100
-    ax.imshow(hot, aspect="auto", origin="lower", cmap="Reds", extent=[times[0], times[-1], -180, 180])
-    ax.set_ylabel("hot area by longitude\n(W -> E) = plucks")
+    hot_map = np.array([f["band_hot"] for f in feats]).T * 100
+    ax.imshow(hot_map, aspect="auto", origin="lower", cmap="Reds", extent=[times[0], times[-1], -180, 180])
+    ax.set_ylabel(f"area above {hot} {units}\nby longitude (W -> E)")
 
     ax = axes[3]
     ax.plot(times, [f["freeze_nh"] * 100 for f in feats], color="#3b6fd8")
-    ax.set_ylabel("% of N. Hemisphere\nbelow freezing = wind")
+    ax.set_ylabel(f"% of N. Hemisphere\nbelow {cold} {units}")
     ax.set_xlabel("seconds (in the soundtrack)")
 
     for a in axes:

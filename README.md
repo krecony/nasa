@@ -56,13 +56,27 @@ winget install ffmpeg
 
 (On Mac/Linux: `python3 -m pip ...` and install ffmpeg with your package manager.)
 
-## Make a track
+## Tracks live in folders
 
-Put the source video in `videos/`, then:
+Every visualization is one folder in `tracks/`; the folder name is the track's name:
 
 ```
-py sonify.py imerg videos/imergert_1080p_30.mp4
-py sonify.py gmao_t2m videos/gmao_t2m_2048x1024.mp4
+tracks/WindSpeed/
+  track.toml     what the video is: title, description, dates, what the colors mean
+  sounds.toml    how it sounds: instruments, samples, volumes, mappings
+  colorbar.png   the color bar image ("field" tracks)
+  video.mp4      the original NASA video (not in git: put it here yourself)
+  samples/       optional: WAVs only this track uses
+```
+
+## Make a track
+
+Put the NASA video in its track folder (or in `videos/`), then:
+
+```
+py sonify.py imerg            one track
+py sonify.py --all            every track
+py sonify.py --list           which tracks there are, and whether their video is in place
 ```
 
 The first run takes about half a minute; after that the video analysis is cached, so
@@ -79,16 +93,16 @@ re-running with different sounds takes a few seconds. Results:
 
 ## Change the sounds
 
-Everything about a track's sound is in its own file, **`sounds/imerg.toml`** or
-**`sounds/gmao_t2m.toml`**, a commented settings file:
-key, scale, chords, each layer's instrument, volume, and how the data drives it (drops per
-second, note range, loudness, thunder threshold, …). Edit it and re-run:
+Everything about a track's sound is in its own file, **`tracks/<name>/sounds.toml`**,
+a commented settings file: key, scale, every sound's instrument, volume, and how the data
+drives it. Edit it and re-run:
 
 ```
-py sonify.py imerg videos/imergert_1080p_30.mp4 --no-video
+py sonify.py imerg --no-video
 ```
 
-**Use your own instruments:** put a WAV file in `samples/` and set, for example:
+**Use your own instruments:** put a WAV file in `samples/` (shared by all tracks) or in
+`tracks/<name>/samples/` (just that track) and set, for example:
 
 ```toml
 [drops]
@@ -97,37 +111,96 @@ root = "C4"
 ```
 
 See `samples/README.md` for which kinds of samples work for which layer. To hear an
-example, try `--sounds sounds/imerg_samples_demo.toml`.
+example, try `py sonify.py imerg --no-video --sounds tracks/imerg/sounds_samples_demo.toml`.
 
 Built-in instruments: `marimba`, `bell`, `pluck`, `sine` (notes), `pad` (chords),
-`rumble`, `noise` (thunder textures).
+`rumble`, `noise` (textures).
+
+### Temperature, wind and other "field" tracks: a list of sounds
+
+Their `sounds.toml` is a list: every `[[sound]]` block is one sound, and you can add,
+remove or copy blocks freely. Each sound has a **kind** and, where it matters, a **range**
+of values (in the track's units, e.g. °C or m/s):
+
+| kind | follows | you hear |
+|---|---|---|
+| `voices` | the average value in 5 bands of latitude | 5 held notes; higher value = higher note |
+| `hits` | places whose value is inside `range` | a short note each time; more area in range = more notes; west→east = left→right; value = pitch and loudness |
+| `background` | the global average (`measure = "mean"`) or the share of the globe inside `range` (`measure = "area"`, optionally one `hemisphere`) | a looping texture whose volume follows it |
+| `chime` | the start of every day | one note or chord |
+
+For example, chimes for strong wind and a marimba for a fresh breeze:
+
+```toml
+[[sound]]
+name = "chimes"
+kind = "hits"
+range = [20]          # 20 m/s and up
+sample = "samples/wind-chimes.wav"
+root = "A6"
+
+[[sound]]
+name = "breeze"
+kind = "hits"
+range = [8, 20]
+instrument = "marimba"
+```
+
+Every setting has a default (`SOUND_DEFAULTS` in `jukebox/config.py`), so a sound only
+needs the lines you want to change. The rain track still uses its own fixed set of layers
+(`pad, drops, thunder, snow, chime`).
 
 Handy options while tweaking:
 
 | Option | What it does |
 |---|---|
 | `--no-video` | skip building the website video (faster) |
-| `--only drops,thunder` | hear only those layers (rain: `pad, drops, thunder, snow, chime`; temperature: `choir, heat, frost, chime`) |
-| `--stems` | also save each layer as its own WAV in `output/imerg/stems/` |
-| `--sounds sounds/x.toml` | use another settings file, so you can keep several versions |
+| `--only chimes,breeze` | hear only those sounds, by name (rain track: `pad, drops, thunder, snow, chime`) |
+| `--stems` | also save each sound as its own WAV in `output/<name>/stems/` |
+| `--sounds tracks/imerg/x.toml` | use another settings file, so you can keep several versions |
 | `--seed 3` | a different random arrangement of the drops |
-| `--reanalyze` | redo the video analysis (only needed if you change `presets.py`) |
+| `--reanalyze` | redo the video analysis (normally automatic when `track.toml` changes) |
+| `--video path.mp4` | use a video from somewhere else |
 
 When you're happy, run once **without** `--no-video` / `--only` to update the website.
 
-## Run the website
+## Run the website (and the studio)
 
 ```
-cd website
-py -m http.server 8000
+py studio.py
 ```
 
-Open http://localhost:8000. (Opening `index.html` directly won't work, because browsers
-block loading `tracks.json` from a file.)
+Open http://localhost:8000. That's the jukebox exactly as it will look online, plus a
+**studio** at http://localhost:8000/studio/ (there's also a link under the track list) for
+adding and editing tracks without touching any files:
+
+1. **New track**: pick a folder name, then upload the NASA video.
+2. Fill in the title and description, the date and time on the first frame (with its time
+   zone; it's converted to UTC), and drag boxes over logos and date stamps to ignore them.
+3. Upload the color bar and type the values at its two ends. Switch to "Check what a color
+   reads as" and move the mouse over the video to test it, or show the value map.
+4. Add sounds; for each one, set the range of values it follows with the sliders on the
+   color bar.
+5. **Preview the sound** builds just the soundtrack (tick "In preview" on sounds to hear
+   only those); the website isn't changed. **Publish to the jukebox** builds everything and
+   adds the track to the site.
+
+**Save** writes `tracks/<name>/track.toml` and `sounds.toml`, the same files you can edit by
+hand (saving rewrites them in a standard layout, so hand-written comments are replaced).
+**Export** gives a zip of the track folder to send to a teammate; **Import a zip** adds one.
+**Delete** moves the folder to `tracks/_deleted/` (not in git), so it can be brought back.
+The rain track can be built, published and exported here, but its settings stay in its
+.toml files.
+
+The studio only runs on your own computer: it only answers requests from this computer, and
+on the public website it simply isn't there (the studio link only shows up with `py studio.py`).
+
+Without the studio, the plain way still works: `cd website` then `py -m http.server 8000`.
+(Opening `index.html` directly won't work, because browsers block loading `tracks.json` from a file.)
 
 ## The temperature track
 
-Temperature covers the whole map, so it gets its own music (`jukebox/compose_field.py`):
+Temperature covers the whole map, so it uses the list of sounds above (`jukebox/compose_field.py`):
 
 | What you see                                        | What you hear                                  |
 |-----------------------------------------------------|------------------------------------------------|
@@ -137,49 +210,63 @@ Temperature covers the whole map, so it gets its own music (`jukebox/compose_fie
 | Share of the Northern Hemisphere below freezing     | Wind that grows as winter comes                |
 | A new day (midnight UTC)                            | Chime                                          |
 
-Colors are turned into °C with NASA's own color bar image (`colorbars/gmao_t2m.png`,
+Colors are turned into °C with NASA's own color bar image (`tracks/gmao_t2m/colorbar.png`,
 from SVS page 5147). The bar is found in the image automatically, and only its two ends
-(−40 and 40) are written in the preset.
+(−40 and 40) are written in `track.toml`. The words in the daily captions ("Hottest",
+"below freezing") are set there too (`caption_high`, `caption_low`, `caption_share`).
+
+**Tricky color bars** (see `tracks/WindSpeed/track.toml`): on NASA's wind bar, calm air is
+see-through (the map shows through) and the strongest winds are plain grey, the same as
+the land. Settings that handle this: `unmatched_value` (what colors that aren't on the bar
+count as), `ignore_above` / `ignore_below` in `colorbar` (leave part of the bar out) and
+`color_space = "lab"` (compare colors the way they look).
 
 ## Add a new visualization
 
+The easiest way is the studio (`py studio.py`, then **New track**; see above). By hand:
+
 Two kinds of video work:
-- **"field"**: a value everywhere on a flat world map (temperature, sea surface
-  temperature, …). Copy the `GMAO_T2M` preset.
+- **"field"**: a value everywhere on a flat world map (temperature, wind, sea surface
+  temperature, …). Start from `tracks/gmao_t2m` or `tracks/WindSpeed`.
 - **"categories"**: data only where something happens, with its color bar inside the
-  video (rain, …). Copy the `IMERG` preset.
+  video (rain, …). Start from `tracks/imerg`.
 
 For a "field" video:
-1. Put the video in `videos/` and its color bar image in `colorbars/` (a screenshot of
-   the bar is fine).
-2. In `jukebox/presets.py`, copy the `GMAO_T2M` block and change: `id`, the texts, the
-   `colorbar` image and its `min`/`max`, `start_time` and `hours_per_frame` (read the
-   timestamps of the first two frames), and `sounds`. Optional: `ignore` boxes for logos
-   or labels drawn on top of the map. Add it to `PRESETS` at the bottom.
-3. Copy `sounds/gmao_t2m.toml` to `sounds/<id>.toml` and pick your instruments/samples.
-4. Run `py sonify.py <id> videos/<file>.mp4` and check `output/<id>/features.png`.
+1. Copy the folder `tracks/WindSpeed` and give the copy a new name, e.g. `tracks/SeaSurface`
+   (the name is used in commands and file names, so no spaces).
+2. Put the NASA video in it, and replace `colorbar.png` with its color bar image (a
+   screenshot of the bar is fine).
+3. In `track.toml`, change the texts, the color bar's `min`/`max` and `units`,
+   `start_time` and `hours_per_frame` (read the timestamps of the first two frames),
+   the thresholds and the caption words. Optional: `ignore` boxes for logos or labels
+   drawn on the map.
+4. In `sounds.toml`, make your list of sounds: instruments, samples and ranges.
+5. Run `py sonify.py SeaSurface` and check `output/SeaSurface/features.png`.
 
 ## Project structure
 
 ```
 sonify.py            run the whole pipeline
-sounds/              sound settings (.toml): instruments, volumes, notes, mappings
-samples/             your own instrument WAV files
-colorbars/           color bar images (for "field" tracks)
+studio.py            the website + the studio (add/edit tracks in the browser)
+studio/              the studio page (HTML, CSS, JS)
+tracks/              one folder per visualization (track.toml, sounds.toml, colorbar, video)
+samples/             instrument WAV files shared by all tracks
 jukebox/
-  presets.py         everything specific to one visualization (analysis side)
+  tracks.py          reads a track folder (track.toml)
   config.py          reads the sound settings, with defaults
   video.py           reading frames
   palette.py         color bar → numbers (rain track: bar inside the video)
   colorbar.py        reads a color bar image (finds the bar automatically)
   features.py        numbers per frame (rain track)
-  field.py           numbers per frame (temperature track)
+  field.py           numbers per frame ("field" tracks: temperature, wind)
+  ranges.py          "how much of the map is between X and Y" from those numbers
   timeline.py        frame → date and soundtrack time
   compose.py         the mapping from features to music (the "score", rain track)
-  compose_field.py   the score for the temperature track
+  compose_field.py   the score for "field" tracks: the list of sounds
   instruments.py     built-in synths + loading/pitching/looping your WAV samples
   synth.py           low-level helpers (panning, pad tone, rumble, reverb)
   describe.py        accessible descriptions + CSV
+  tomlwriter.py      writes track.toml / sounds.toml when the studio saves
   plots.py           feature plots
 website/             the jukebox site (static: HTML/CSS/JS)
 ```

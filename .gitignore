@@ -1,7 +1,11 @@
-# Source videos are big: download them into videos/ yourself
+# Source videos are big: put them in the track folders (or videos/) yourself
 videos/*.mp4
 videos/*.webm
 videos/*.mov
+tracks/*/*.mp4
+tracks/*/*.webm
+tracks/*/*.mov
+tracks/*/*.m4v
 
 __pycache__/
 *.pyc
@@ -10,3 +14,6 @@ __pycache__/
 # Generated while tweaking
 output/*/analysis.pkl
 output/*/stems/
+
+# Tracks deleted in the studio (kept here just in case)
+tracks/_deleted/

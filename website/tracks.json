@@ -1,22 +1,5 @@
 [
   {
-    "id": "gmao_t2m",
-    "title": "Near-Surface Temperature (GEOS-FP)",
-    "source": "NASA GMAO GEOS-FP model, NASA Scientific Visualization Studio (SVS 5147)",
-    "description": "A flat map of the whole Earth showing the air temperature 2 meters above the ground, hour by hour from 30 October to 14 November 2026, from NASA's GEOS-FP weather model. Colors run from dark blue, white and purple (-40 C) through blue, cyan, yellow, orange and red to dark red and grey (+40 C). The tropics stay warm and steady, deserts heat up every afternoon, and the Arctic, Siberia and northern Canada get colder as winter arrives.",
-    "listening_guide": [
-      "Five held voices, one for each band of latitude, from the Arctic to Antarctica. Warmer = higher. Each step up or down is about 1 degree C.",
-      "Listen to the Arctic voice sink as winter sets in, and the Antarctic voice rise with the southern spring.",
-      "Plucks = places hotter than 30 C. Hotter = higher and louder.",
-      "Every day the plucks sweep from right to left: afternoon heat moves west with the sun, from Asia to Africa to the Americas.",
-      "Wind = how much of the Northern Hemisphere is below freezing. It grows as winter comes.",
-      "A chime rings at the start of every day (midnight UTC)."
-    ],
-    "video": "media/gmao_t2m.mp4",
-    "captions": "media/gmao_t2m.vtt",
-    "features_image": "media/gmao_t2m.png"
-  },
-  {
     "id": "imerg",
     "title": "Global Rain and Snow (IMERG)",
     "source": "NASA GPM IMERG precipitation, NASA Scientific Visualization Studio",
@@ -47,5 +30,22 @@
     "video": "media/WindSpeed.mp4",
     "captions": "media/WindSpeed.vtt",
     "features_image": "media/WindSpeed.png"
+  },
+  {
+    "id": "gmao_t2m",
+    "title": "Near-Surface Temperature (GEOS-FP)",
+    "source": "NASA GMAO GEOS-FP model, NASA Scientific Visualization Studio (SVS 5147)",
+    "description": "A flat map of the whole Earth showing the air temperature 2 meters above the ground, hour by hour from 30 October to 14 November 2026, from NASA's GEOS-FP weather model. Colors run from dark blue, white and purple (-40 C) through blue, cyan, yellow, orange and red to dark red and grey (+40 C). The tropics stay warm and steady, deserts heat up every afternoon, and the Arctic, Siberia and northern Canada get colder as winter arrives.",
+    "listening_guide": [
+      "Five held voices, one for each band of latitude, from the Arctic to Antarctica. Warmer = higher. Each step up or down is about 1 degree C.",
+      "Listen to the Arctic voice sink as winter sets in, and the Antarctic voice rise with the southern spring.",
+      "Plucks = places hotter than 30 C. Hotter = higher and louder.",
+      "Every day the plucks sweep from right to left: afternoon heat moves west with the sun, from Asia to Africa to the Americas.",
+      "Wind = how much of the Northern Hemisphere is below freezing. It grows as winter comes.",
+      "A chime rings at the start of every day (midnight UTC)."
+    ],
+    "video": "media/gmao_t2m.mp4",
+    "captions": "media/gmao_t2m.vtt",
+    "features_image": "media/gmao_t2m.png"
   }
 ]

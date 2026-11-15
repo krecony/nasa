@@ -52,8 +52,9 @@ def load_sample(path, base_dir):
     """Read a WAV file as mono float at 44.1 kHz, peak 1.0."""
     p = Path(path)
     if not p.is_absolute():
-        # relative to the project folder, or else to where you run the command from
-        p = Path(base_dir) / p if (Path(base_dir) / p).exists() else Path.cwd() / p
+        # look in the track's folder, then the project folder, then where the command was run from
+        bases = list(base_dir) if isinstance(base_dir, (list, tuple)) else [base_dir]
+        p = next((Path(b) / p for b in bases + [Path.cwd()] if (Path(b) / p).exists()), Path(bases[0]) / p)
     if p in _sample_cache:
         return _sample_cache[p]
     if not p.exists():

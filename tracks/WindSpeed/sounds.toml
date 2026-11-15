@@ -1,0 +1,104 @@
+# =============================================================================
+#  Earth Jukebox - sound settings for "Near-Surface Wind Speed (GEOS-FP)"
+# =============================================================================
+#
+#  Run (fast, skips the video):
+#     py sonify.py WindSpeed --no-video
+#  and listen to output/WindSpeed/sonification.wav
+#
+#  The music is a list of sounds: each [[sound]] block is one sound. Add, remove or
+#  copy blocks freely. Every sound has a `kind`:
+#     voices      5 held notes, one per band of latitude, following its average wind speed
+#     hits        a short note each time somewhere has wind inside `range`
+#     background  a looping texture whose volume follows the global average ("mean")
+#                 or how much of the globe is inside `range` ("area")
+#     chime       once at the start of every day (UTC)
+#  `range = [low, high]` is in m/s. Leave out `high` (range = [20]) for "20 and up".
+#
+#  Handy while tweaking:
+#     py sonify.py WindSpeed --no-video --only chimes,whistles   hear only those sounds (by name)
+#     py sonify.py WindSpeed --no-video --stems                  also save every sound as its own WAV
+#
+#  INSTRUMENTS: a built-in synth  (instrument = "marimba" / "bell" / "pluck" / "sine";
+#  voices: "pad"; background: texture = "noise" / "rumble")  or your own WAV file:
+#     sample = "samples/my_harp_C4.wav"   + root = "C4" (the note your recording plays)
+#  Samples are looked up in this track's folder first, then in the project's samples/ folder.
+#  Any setting you leave out uses its default (see SOUND_DEFAULTS in jukebox/config.py).
+# =============================================================================
+
+
+[music]
+key = "C"                    # in C so it fits the C major 7 pad
+scale = "major_pentatonic"   # C D E G A
+
+[mix]
+reverb_seconds = 2.8
+reverb_wet = 0.3
+peak = 0.89
+
+
+# --- 5 breathy bottle whistles, one per band of latitude ------------------------
+# Arctic, northern mid-latitudes, tropics, southern mid-latitudes, Antarctic.
+# Windier band = higher note. The strongest is usually the "roaring forties" around Antarctica.
+[[sound]]
+name = "whistles"
+kind = "voices"
+volume = 0.26
+sample = "samples/low-bottle-whistle-fx_D_major.wav"
+root = "D3"                  # the whistle plays a D3
+crossfade = 0.4              # seconds, smooths the loop (the whistle swells, so it "breathes")
+range = [0, 15]              # m/s: an average of 0 plays lowest_note, 15 plays highest_note
+lowest_note = "C3"
+highest_note = "C5"
+units_per_step = 0.5         # every 0.5 m/s faster = one scale step higher
+glide = 0.4
+hysteresis = 0.3             # 0..0.5: ignore small wobbles around a note
+smoothing = 5
+pans = [-0.8, -0.4, 0.0, 0.4, 0.8]
+band_volumes = [0.8, 1.0, 0.9, 1.0, 0.8]
+
+
+# --- Wind chimes ring where the wind is strong ------------------------------------
+# Stronger = higher and louder. West = left, east = right.
+[[sound]]
+name = "chimes"
+kind = "hits"
+volume = 0.3
+sample = "samples/wind-chimes-with-vibrato-2_69bpm_A#_minor.wav"
+root = "A6"                  # chimes don't have one clear note; A6 keeps them near their real pitch
+pitched = true               # false = always play the chimes exactly as recorded
+length = 1.5                 # seconds: only use the first strike of the recording
+range = [20]                 # m/s: 20 and up
+pitch_range = [20, 35]       # m/s mapped to lowest_note .. highest_note (default: the range)
+per_second_min = 0.5         # chimes per second when the strong-wind area is smallest...
+per_second_max = 6           # ...and largest
+lowest_note = "C6"
+highest_note = "C7"
+pitch_jitter = 1
+quiet = 0.4
+loud = 1.0
+stereo_width = 0.95
+
+
+# --- A looped wind recording: louder when the whole planet is windier -----------
+[[sound]]
+name = "wind"
+kind = "background"
+volume = 0.3
+sample = "samples/wind_C5.wav"   # looped for the whole track
+measure = "mean"             # "mean" = global average wind speed
+                             # "area" = share of the globe inside `range` (+ hemisphere = "north"/"south"/"all")
+level_min = 0.3              # volume when the planet is least windy (0..1)
+curve = 1.0                  # >1 = only loud at the windiest moments
+smoothing = 9
+
+
+# --- The C major 7 pad marks the start of every day ------------------------------
+[[sound]]
+name = "daily chord"
+kind = "chime"
+volume = 0.18
+sample = "samples/pad_Cmaj7.wav"
+pitched = false              # play the chord as recorded (it's already in C)
+note = "C4"
+add_fifth = false            # the pad is already a full chord

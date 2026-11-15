@@ -1,0 +1,59 @@
+# =============================================================================
+#  Track: Near-Surface Wind Speed (GEOS-FP)
+#  Build it:  py sonify.py WindSpeed
+#  The sound is set in sounds.toml (same folder).
+# =============================================================================
+
+# --- Shown on the website (and read by screen readers) ---------------------
+title = "Near-Surface Wind Speed (GEOS-FP)"
+source = "NASA GMAO GEOS-FP model, NASA Scientific Visualization Studio (SVS 5148)"
+description = """A flat map of the whole Earth showing how fast the wind blows 10 meters (about 30 feet) above the ground, \
+hour by hour, from NASA's GEOS-FP weather model. Colors run from pale lavender and purple for light winds, \
+through blue, cyan, yellow and orange, to red for strong winds (around 20 meters per second), \
+and dark red, brown and grey for hurricane-force winds (up to 40 meters per second, about 145 km/h). \
+Winds are strongest over the oceans, where there is little to slow them down, \
+and swirling bands of color show weather fronts and storms moving around the globe."""
+listening_guide = [
+  "Five breathy whistles, one per band of latitude. Windier = higher.",
+  "Wind chimes ring where the wind is stronger than 20 m/s (storms). Stronger = higher and louder; west = left, east = right.",
+  "The rushing wind gets louder as the whole planet gets windier.",
+  "A chord marks the start of every day.",
+]
+
+# --- The video ---------------------------------------------------------------
+# "field" = a value everywhere on the map (temperature, wind, ...)
+kind = "field"
+video = ""                        # empty = the video file in this folder (put the NASA MP4 here)
+start_time = "2026-10-30T09:00"   # 30 Oct 05:00 EDT on the first frame = 09:00 UTC
+hours_per_frame = 1.0             # 30 Oct 05:00 EDT .. 14 Nov 15:00 EST = 1 hour per frame
+slow_down = 1.5
+smooth_video = true               # blend frames so the slowed video isn't choppy
+
+# Boxes to ignore: [x0, y0, x1, y1] in video pixels (2048x1024)
+ignore = [
+  [0, 0, 360, 80],      # NASA / GMAO logo
+  [0, 920, 505, 1024],  # date/time stamp
+]
+
+# --- Words for the daily captions (shown on the website, read by screen readers) ---
+caption_high = "Windiest"
+caption_low = "Calmest outside Antarctica"
+caption_share = "calm (below 5 m/s)"             # "...% of the Northern Hemisphere is calm (below 5 m/s)"
+caption_share_name = "The calm area"             # "The calm area is growing."
+
+# --- What the colors mean ------------------------------------------------------
+units = "m/s"
+# On this video calm air (below ~3.5 m/s) is see-through: the black sea and grey land show through.
+# The top of the bar (35-40 m/s) is plain grey, the same grey as the land, so it's left out.
+color_space = "lab"               # compare colors the way they look (separates dark blue from dark brown)
+max_color_distance = 12           # in "lab" units: how close a pixel must be to a color bar color
+unmatched_value = 2               # pixels that aren't on the bar (bare map showing through) = calm, 2 m/s
+hot_threshold = 20                # strong wind: wind chimes ring above this (m/s)
+cold_threshold = 5                # calm: below this (m/s)
+very_cold_threshold = 3           # (these names come from the temperature track)
+
+# The color bar image (colorbar.png in this folder, from the SVS 5148 page) and what its ends mean.
+colorbar = { image = "colorbar.png", min = 0, max = 40, ignore_above = 33 }
+
+# Flat world map filling the whole frame
+map = { lon_min = -180, lon_max = 180, lat_max = 90, lat_min = -90 }

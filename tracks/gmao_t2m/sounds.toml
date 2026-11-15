@@ -1,0 +1,94 @@
+# =============================================================================
+#  Sound settings for "Near-Surface Temperature (GEOS-FP)"
+#  Each [[sound]] block is one sound; kinds: voices, hits, background, chime.
+#  Any setting you leave out uses its default (SOUND_DEFAULTS in jukebox/config.py).
+# =============================================================================
+
+[music]
+key = "C#"
+scale = "minor_pentatonic"
+
+[mix]
+reverb_seconds = 2.8
+reverb_wet = 0.3
+peak = 0.89
+
+
+[[sound]]
+name = "choir"
+kind = "voices"                    # voices / hits / background / chime
+enabled = true                     # false = muted
+volume = 0.14
+instrument = "pad"                 # built-in synth (ignored when `sample` is set)
+harmonics = [1, 0.35, 0.15, 0.06]
+detune_cents = 6
+sample = "samples/pad_1_C5.wav"    # your own WAV file ("" = use the built-in instrument)
+root = "C4"                        # the note the sample plays
+crossfade = 0.3
+range = [-40, 35]                  # values this sound follows: [low, high], "none" = no limit
+lowest_note = "E2"
+highest_note = "E5"
+units_per_step = 1                 # this much change = one scale step
+glide = 0.4
+hysteresis = 0.3
+smoothing = 5
+pans = [-0.8, -0.4, 0, 0.4, 0.8]
+band_volumes = [0.8, 1, 0.9, 1, 0.8]
+
+[[sound]]
+name = "heat"
+kind = "hits"                      # voices / hits / background / chime
+enabled = true                     # false = muted
+volume = 0.42
+instrument = "pluck"               # built-in synth (ignored when `sample` is set)
+decay = 0.5
+brightness = 0.6
+attack = 0
+sample = "samples/keys-perc.wav"   # your own WAV file ("" = use the built-in instrument)
+root = "C4"                        # the note the sample plays
+pitched = true                     # false = play the sample as recorded
+length = 0                         # seconds of the sample to use (0 = all)
+range = [30, "none"]               # values this sound follows: [low, high], "none" = no limit
+pitch_range = [30, 42]             # values mapped to lowest..highest note (empty = the range)
+lowest_note = "E4"
+highest_note = "E6"
+per_second_min = 2                 # notes per second at the least...
+per_second_max = 22                # ...and at the most
+pitch_jitter = 1
+quiet = 0.4
+loud = 1
+stereo_width = 0.95
+smoothing = 3
+
+[[sound]]
+name = "frost"
+kind = "background"                # voices / hits / background / chime
+enabled = true                     # false = muted
+volume = 0.35
+texture = "noise"
+cutoff = 110
+low = 300
+high = 2500
+sample = ""                        # your own WAV file ("" = use the built-in instrument)
+measure = "area"                   # "mean" = global average, "area" = share inside range
+range = ["none", 0]                # values this sound follows: [low, high], "none" = no limit
+hemisphere = "north"               # "all", "north" or "south"
+level_min = 0.15                   # volume at the least (0..1)
+curve = 1                          # >1 = only loud at the most
+smoothing = 9
+
+[[sound]]
+name = "chime"
+kind = "chime"                     # voices / hits / background / chime
+enabled = true                     # false = muted
+volume = 0.1
+instrument = "bell"                # built-in synth (ignored when `sample` is set)
+decay = 2.2
+brightness = 0.5
+attack = 0.005
+sample = "samples/fajny_pad.wav"   # your own WAV file ("" = use the built-in instrument)
+root = "C4"                        # the note the sample plays
+pitched = true                     # false = play the sample as recorded
+length = 0                         # seconds of the sample to use (0 = all)
+note = "E5"
+add_fifth = true

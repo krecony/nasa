@@ -1,7 +1,7 @@
 """Step 4: the "score" - how features become music.
 
 All numbers you might want to change live in the sound settings file
-(sounds/imerg.toml). This file only contains the logic:
+(tracks/<name>/sounds.toml). This file only contains the logic:
 
   What you see                         What you hear              Settings
   ---------------------------------    -------------------------  ----------

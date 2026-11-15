@@ -3,13 +3,13 @@
 # =============================================================================
 #
 #  Edit anything here, then run (fast, skips the video):
-#     py sonify.py imerg videos/imergert_1080p_30.mp4 --no-video
+#     py sonify.py imerg --no-video
 #  and listen to output/imerg/sonification.wav
 #
 #  Handy while tweaking:
 #     --only drops,thunder      hear just those layers
 #     --stems                   also save every layer as its own WAV (output/imerg/stems/)
-#     --sounds sounds/other.toml   try a different settings file
+#     --sounds tracks/imerg/other.toml   try a different settings file
 #
 #  INSTRUMENTS
 #  Every layer can use a built-in synth OR your own WAV file:
