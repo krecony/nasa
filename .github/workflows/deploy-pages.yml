@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "website/**"
+      - "jukebox/**"          # the Python code the "add your own" page runs in the browser
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
@@ -27,6 +28,12 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+
+      # website/py/jukebox.zip = the jukebox/ Python code, for the "add your own" page.
+      # Rebuilt here so the site always runs the latest code, even if nobody ran
+      # `py studio.py` / `py sonify.py` after changing it. (Plain Python, nothing to install.)
+      - name: Pack the Python code for the browser
+        run: python3 -m jukebox.webbundle
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

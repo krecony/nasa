@@ -44,14 +44,12 @@ from jukebox.describe import day_cues, field_cues, write_vtt, write_csv, write_f
 from jukebox.features import extract
 from jukebox.field import extract_field
 from jukebox.plots import plot_features, plot_field
-from jukebox.tracks import all_track_names, find_video, load_track, VIDEO_TYPES
+from jukebox.webbundle import make_bundle
+from jukebox.tracks import ANALYSIS_KEYS, all_track_names, find_video, load_track, VIDEO_TYPES
 from jukebox.synth import SAMPLE_RATE
 from jukebox.timeline import build_timeline
 
 ROOT = Path(__file__).resolve().parent
-ANALYSIS_KEYS = ["kind", "map", "layers", "color_match", "min_background_diff", "ignore", "heavy_threshold",
-                 "colorbar", "max_color_distance", "color_space", "unmatched_value", "hot_threshold", "cold_threshold",
-                 "very_cold_threshold"]
 
 
 def analysis_key(preset, video):
@@ -196,6 +194,7 @@ def build(name, args, video_override=None):
         shutil.copy(out / "descriptions.vtt", media / f"{preset['id']}.vtt")
         shutil.copy(out / "features.png", media / f"{preset['id']}.png")
         update_tracks(preset, has_video)
+        make_bundle()                         # keep the browser's copy of the code up to date
     print(f"Done. Listen to {out / 'sonification.wav'}")
 
 

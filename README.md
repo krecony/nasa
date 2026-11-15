@@ -192,8 +192,35 @@ hand (saving rewrites them in a standard layout, so hand-written comments are re
 The rain track can be built, published and exported here, but its settings stay in its
 .toml files.
 
-The studio only runs on your own computer: it only answers requests from this computer, and
-on the public website it simply isn't there (the studio link only shows up with `py studio.py`).
+The studio only runs on your own computer: it only answers requests from this computer.
+
+## "Add your own" on the public website
+
+On the public website the same page (`website/studio/`) is the **"+ Add your own track"**
+link under the track list. There's no server there, so the page runs our Python in the
+visitor's browser with [Pyodide](https://pyodide.org) (Python for the browser):
+
+- It's the same form and the same code (`jukebox/web.py` uses `jukebox/studio_core.py`, like
+  `studio.py`), so nothing was rewritten in JavaScript.
+- The browser reads the video (Python in the browser can't decode MP4s) and hands each frame
+  to Python. Everything stays in that browser (IndexedDB): nothing is uploaded anywhere, and
+  nobody else sees it. Their tracks show up in *their* jukebox marked "(yours)".
+- **Export** gives the same zip as the studio's export. If someone sends you a good one,
+  **Import a zip** in your studio, add the video, and publish it for everyone.
+- The first visit downloads about 35 MB (Python, NumPy, SciPy, OpenCV); the browser keeps it
+  after that. Reading the video takes about as long as the video plays; after that, changing
+  the sounds takes seconds.
+- Differences from the studio: no graph, no combined video file (the jukebox plays the
+  original video slowed down, in sync with the soundtrack), and only the built-in instruments
+  plus samples the visitor uploads (the team's `samples/` folder isn't on the website).
+
+The browser runs the code in `website/py/jukebox.zip`. `py studio.py` and `py sonify.py`
+update it automatically when the Python code changed (it's identical when the code is, so git
+only sees a change when there is one); commit it with the rest. To try the public version on
+your computer, run `py -m http.server 8000` in `website/` (not the studio) and open
+http://localhost:8000/studio/: without the studio server it switches to the browser version.
+
+## Without the studio
 
 Without the studio, the plain way still works: `cd website` then `py -m http.server 8000`.
 (Opening `index.html` directly won't work, because browsers block loading `tracks.json` from a file.)
@@ -248,7 +275,6 @@ For a "field" video:
 ```
 sonify.py            run the whole pipeline
 studio.py            the website + the studio (add/edit tracks in the browser)
-studio/              the studio page (HTML, CSS, JS)
 tracks/              one folder per visualization (track.toml, sounds.toml, colorbar, video)
 samples/             instrument WAV files shared by all tracks
 jukebox/
@@ -267,8 +293,14 @@ jukebox/
   synth.py           low-level helpers (panning, pad tone, rumble, reverb)
   describe.py        accessible descriptions + CSV
   tomlwriter.py      writes track.toml / sounds.toml when the studio saves
+  studio_core.py     the studio's logic (save, colors, uploads, export/import), for both versions
+  web.py             the studio in a visitor's browser (run by Pyodide)
+  webbundle.py       packs this folder into website/py/jukebox.zip for the browser
   plots.py           feature plots
 website/             the jukebox site (static: HTML/CSS/JS)
+  studio/            the Add / Edit track page (local studio and public "add your own")
+  js/mytracks.js     visitors' own tracks, saved in their browser
+  py/jukebox.zip     the Python code the browser runs (made automatically)
 ```
 
 Visualizations: NASA Scientific Visualization Studio / Earth Information Center.

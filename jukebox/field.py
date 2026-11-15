@@ -61,9 +61,9 @@ def build_lut(colors, values, max_distance, space="rgb"):
 
 
 class FieldExtractor:
-    def __init__(self, preset, video_path, root):
+    def __init__(self, preset, video_path, root, info=None):
         self.preset = preset
-        self.info = video_info(video_path)
+        self.info = info or video_info(video_path)     # the browser passes info (it reads the video itself)
         colors, values = read_colorbar(preset["colorbar"], root)
         # value bins for the histograms (log-spaced for a log color bar)
         lo, hi = float(values.min()), float(values.max())
@@ -193,8 +193,11 @@ def extract_field(preset, video_path, root, progress=True):
         feats.append(fx.frame_features(frame))
         if progress and i % 50 == 0:
             print(f"  frame {i}/{fx.info['frames']}", flush=True)
+    return finish_field(fx, feats)
 
-    # name the hottest / coldest places, now that we know where land is
+
+def finish_field(fx, feats):
+    """After the last frame: name the hottest / coldest places, now that we know where land is."""
     land = fx.land_mask()
     lh, lw = land.shape
 

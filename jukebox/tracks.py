@@ -20,6 +20,10 @@ from .config import tomllib
 ROOT = Path(__file__).resolve().parent.parent
 TRACKS_DIR = ROOT / "tracks"
 VIDEO_TYPES = (".mp4", ".mov", ".webm", ".m4v")
+# settings that change what the video analysis finds (a change means: read the video again)
+ANALYSIS_KEYS = ["kind", "map", "layers", "color_match", "min_background_diff", "ignore", "heavy_threshold",
+                 "colorbar", "max_color_distance", "color_space", "unmatched_value", "hot_threshold", "cold_threshold",
+                 "very_cold_threshold"]
 
 # every setting a track.toml can have, with its default (None = required)
 KNOWN = {
