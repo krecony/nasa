@@ -11,11 +11,10 @@
   html, body { margin: 0; height: 100%; background: #5b8fbd; }
   .hero { position: relative; width: 100%; height: 100vh; height: 100svh; min-height: 560px; overflow: hidden; background: #5b8fbd; touch-action: none; font-family: Inter, system-ui, sans-serif; }
   .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-  .app { position: absolute; inset: 0; }
-  .intro { position: relative; height: 100%; box-sizing: border-box; padding: 0 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 44px; text-align: center; }
-  .hero h1 .word { display: inline-block; white-space: nowrap; }
-  .hero h1 .ch { display: inline-block; will-change: transform, opacity; }
+  .hero main { position: relative; height: 100%; box-sizing: border-box; padding: 0 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 44px; text-align: center; }
   .hero h1 { margin: 0; max-width: 12ch; font-family: 'Bricolage Grotesque', Inter, sans-serif; font-weight: 800; font-size: clamp(3.5rem, 10.5vw, 10.5rem); line-height: 0.9; letter-spacing: -0.04em; color: #F3EEE0; text-shadow: 0 2px 6px rgba(10,30,20,0.35), 0 8px 48px rgba(10,30,20,0.6); }
+  .hero .title h1 { margin-inline: auto; }
+  .hero .tagline { margin: 4px auto 0; white-space: nowrap; font: 500 clamp(0.95rem, 2.2vw, 2.2rem)/1.3 Inter, system-ui, sans-serif; letter-spacing: 0.04em; color: #F3EEE0; text-shadow: 0 1px 4px rgba(10,30,20,0.55), 0 4px 24px rgba(10,30,20,0.6); }
   .cta { display: inline-flex; align-items: center; gap: 12px; height: 60px; padding: 0 30px 0 34px; border: 0; border-radius: 999px; background: #F3EEE0; color: #10201F; font: 600 18px/1 Inter, system-ui, sans-serif; letter-spacing: -0.01em; text-decoration: none; cursor: pointer; box-shadow: 0 10px 30px rgba(4,12,16,0.35); transition: background-color .2s ease, transform .2s ease, box-shadow .2s ease; }
   .cta:hover { background: #fff; transform: translateY(-2px); box-shadow: 0 14px 36px rgba(4,12,16,0.45); }
   .cta:active { transform: translateY(0); }
@@ -26,44 +25,42 @@
   .snd .on { display: none; }
   .snd[aria-pressed="true"] .on { display: inline; }
   .snd[aria-pressed="true"] .off { display: none; }
-  .cta:focus-visible, .snd:focus-visible { outline: 3px solid #F2B872; outline-offset: 4px; }
-  .snd { z-index: 3; }
+  .cta:focus-visible, .snd:focus-visible, .back:focus-visible { outline: 3px solid #F2B872; outline-offset: 4px; }
+  /* flight to the clearing: headline fades away, the panel and back button appear on arrival */
+  .hero canvas { transition: opacity .3s ease; }
+  .hero.cut canvas { opacity: 0; }
+  .hero main { transition: opacity .4s ease, transform .7s ease; }
+  .hero.away main { opacity: 0; transform: scale(1.08); pointer-events: none; }
+  .hero.arrived { touch-action: auto; } /* lets the page inside the panel scroll on touch screens */
+  .back { position: absolute; left: 24px; top: 24px; display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 18px 0 14px; border-radius: 999px; border: 1px solid rgba(243,238,224,0.28); background: rgba(11,24,32,0.55); color: #F3EEE0; font: 500 14px/1 Inter, system-ui, sans-serif; cursor: pointer; opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s linear .2s, background-color .2s ease, border-color .2s ease; }
+  .hero.arrived .back { opacity: 1; visibility: visible; transition: opacity .35s ease, background-color .2s ease, border-color .2s ease; }
+  .back:hover { background: rgba(11,24,32,0.8); border-color: rgba(243,238,224,0.5); }
+  .back, .snd { z-index: 3; }
 
-  /* ---------- the jukebox, lying in clearings in the forest ---------- */
+  /* ---------- the jukebox: three panels lying in the clearing (placed by the script on arrival) ---------- */
   .stage { position: absolute; inset: 0; pointer-events: none; }
-  /* invisible layout: where each clearing ends up on screen in the bird's-eye view */
-  .layout { position: absolute; inset: 0; box-sizing: border-box; display: grid; visibility: hidden;
-    grid-template-columns: minmax(170px, 15%) minmax(0, 1fr) minmax(220px, 24%);
-    grid-template-areas: "tracks player info";
-    gap: clamp(24px, 3.4vw, 60px);
-    padding: clamp(24px, 5vh, 56px) clamp(24px, 3.4vw, 60px) clamp(80px, 10vh, 96px); }
-  .slot-tracks { grid-area: tracks; } .slot-player { grid-area: player; } .slot-info { grid-area: info; }
-  @media (max-width: 860px), (max-aspect-ratio: 1/1) {
-    .layout { grid-template-columns: 1fr; grid-template-rows: minmax(0, 50fr) minmax(0, 18fr) minmax(0, 32fr);
-      grid-template-areas: "player" "tracks" "info"; gap: 18px; padding: 18px 18px 80px; }
-  }
-  .panel { position: absolute; left: 0; top: 0; box-sizing: border-box; transform-origin: 0 0;
-    opacity: 0; visibility: hidden; overflow: auto; overscroll-behavior: contain; touch-action: pan-y;
-    pointer-events: auto; padding: clamp(14px, 1.5vw, 22px); border-radius: 22px;
+  .panel { position: absolute; left: 0; top: 0; width: 0; height: 0; box-sizing: border-box;
+    opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s linear .2s;
+    overflow: auto; overscroll-behavior: contain; touch-action: pan-y; pointer-events: auto;
+    padding: clamp(12px, 1.4vw, 22px); border-radius: 20px;
     background: rgba(8, 22, 19, 0.88); color: #F3EEE0; font: 500 15px/1.5 Inter, system-ui, sans-serif;
     box-shadow: inset 0 0 0 1px rgba(243,238,224,0.10), inset 0 12px 34px rgba(0,0,0,0.6),
                 0 0 0 7px rgba(52, 80, 38, 0.35), 0 26px 60px rgba(0,0,0,0.45);
-    scrollbar-color: rgba(243,238,224,0.3) transparent; will-change: transform, opacity; }
+    scrollbar-color: rgba(243,238,224,0.3) transparent; }
+  .hero.arrived .panel { opacity: 1; visibility: visible; transition: opacity .35s ease; }
   .panel h2, .panel h3 { font-family: 'Bricolage Grotesque', Inter, sans-serif; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 6px; }
-  .panel h2 { font-size: clamp(1.25rem, 1.7vw, 1.7rem); line-height: 1.1; }
+  .panel h2 { font-size: clamp(1.2rem, 1.6vw, 1.7rem); line-height: 1.1; }
   .panel h3 { font-size: 1.05rem; margin-top: 14px; }
+  .panel h3:first-child { margin-top: 0; }
   .panel p, .panel ul { margin: 0 0 8px; }
   .panel :focus-visible { outline: 3px solid #F2B872; outline-offset: 3px; border-radius: 6px; }
+  .panel h2:focus { outline: none; }
   .panel-player { display: flex; flex-direction: column; gap: 10px; }
-  .player-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-  .player-head .source { color: rgba(243,238,224,0.7); font-size: 13px; margin: 0; }
+  .panel-player .source { color: rgba(243,238,224,0.7); font-size: 13px; margin: 0; }
   .panel-player video { flex: 1 1 auto; min-height: 0; width: 100%; object-fit: contain; background: #000; border-radius: 12px; }
   .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
-  .btn { font: 600 14px/1 Inter, system-ui, sans-serif; height: 40px; padding: 0 18px; border-radius: 999px; border: 0; cursor: pointer;
-    background: #F3EEE0; color: #10201F; }
+  .btn { font: 600 14px/1 Inter, system-ui, sans-serif; height: 40px; padding: 0 18px; border-radius: 999px; border: 0; cursor: pointer; background: #F3EEE0; color: #10201F; }
   .btn:hover { background: #fff; }
-  .btn-ghost { background: transparent; color: #F3EEE0; border: 1px solid rgba(243,238,224,0.35); white-space: nowrap; }
-  .btn-ghost:hover { background: rgba(243,238,224,0.1); }
   .toggle { color: rgba(243,238,224,0.8); font-size: 13px; display: inline-flex; gap: 8px; align-items: center; }
   .status { margin: 0; padding: 8px 12px; border-left: 3px solid #F2B872; background: rgba(243,238,224,0.06); border-radius: 4px; font-size: 14px; }
   .status:empty { display: none; }
@@ -72,9 +69,7 @@
     border: 1px solid rgba(243,238,224,0.25); background: rgba(243,238,224,0.06); color: #F3EEE0; cursor: pointer; }
   #track-list button:hover { background: rgba(243,238,224,0.14); }
   #track-list button[aria-pressed="true"] { background: #F2B872; border-color: #F2B872; color: #10201F; }
-  @media (max-width: 860px), (max-aspect-ratio: 1/1) {
-    #track-list { flex-direction: row; flex-wrap: wrap; } #track-list button { width: auto; }
-  }
+  .tall #track-list { flex-direction: row; flex-wrap: wrap; } .tall #track-list button { width: auto; }
   .panel-info ul { padding-left: 18px; } .panel-info li + li { margin-top: 4px; }
   .panel-info details { margin-top: 12px; } .panel-info summary { cursor: pointer; font-weight: 600; }
   .panel-info img { max-width: 100%; background: #fff; border-radius: 6px; margin-top: 8px; }
@@ -83,57 +78,53 @@
 <body>
 <div class="hero" id="hero">
   <canvas id="forest" aria-hidden="true"></canvas>
-  <main class="app">
-    <div class="intro" id="intro">
-      <h1 id="title">Earth Jukebox</h1>
-      <!-- Without WebGL (or JavaScript) this simply opens the jukebox page -->
-      <a class="cta" href="index2.html">Check it out<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></a>
+  <main>
+    <div class="title">
+      <h1>Earth Jukebox</h1>
+      <p class="tagline">Nasa's views of our changing planet, turned into sound.</p>
     </div>
-
-    <!-- The jukebox: each panel lies in a clearing in the forest (see "clearings" in the script) -->
-    <section class="stage" id="stage" aria-label="Earth Jukebox player" inert>
-      <div class="layout" aria-hidden="true">
-        <div class="slot-tracks" data-panel="tracks"></div>
-        <div class="slot-player" data-panel="player"></div>
-        <div class="slot-info" data-panel="info"></div>
-      </div>
-
-      <nav class="panel panel-tracks" id="panel-tracks" aria-labelledby="tracks-heading">
-        <h2 id="tracks-heading">Tracks</h2>
-        <ul id="track-list"></ul>
-      </nav>
-
-      <section class="panel panel-player" id="panel-player" aria-labelledby="track-title">
-        <div class="player-head">
-          <div>
-            <h2 id="track-title" tabindex="-1">Loading…</h2>
-            <p id="track-source" class="source"></p>
-          </div>
-          <button type="button" class="btn btn-ghost" id="back">Back to the forest</button>
-        </div>
-        <video id="video" controls loop playsinline preload="metadata" aria-describedby="description">
-          <track id="captions" kind="captions" srclang="en" label="What you're hearing" default>
-        </video>
-        <div class="controls">
-          <button type="button" class="btn" id="play" aria-pressed="false">Play</button>
-          <label class="toggle"><input type="checkbox" id="announce" checked> Read the daily descriptions to screen readers</label>
-        </div>
-        <p id="status" class="status" role="status" aria-live="polite"></p>
-      </section>
-
-      <section class="panel panel-info" id="panel-info" aria-label="About this track">
-        <h3>What the picture shows</h3>
-        <p id="description"></p>
-        <h3>How to listen</h3>
-        <ul id="guide"></ul>
-        <details>
-          <summary>How the sound is made</summary>
-          <p>A Python script reads every frame of the video, turns the colors back into numbers with the map's own color bar, and turns those numbers into music.</p>
-          <img id="features-image" alt="Graphs of the numbers extracted from the video over time.">
-        </details>
-      </section>
-    </section>
+    <!-- The button flies the camera to the clearing. The href is only used as a fallback when WebGL is unavailable. -->
+    <a class="cta" href="index2.html">Check it out<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></a>
   </main>
+  <!-- The jukebox: three panels lying in the clearing. The script places them over the ground on arrival;
+       which part of the clearing each one takes is set in opts.layout below. -->
+  <section class="stage" id="stage" aria-label="Earth Jukebox player" inert>
+    <nav class="panel panel-tracks" id="panel-tracks" aria-labelledby="tracks-heading">
+      <h2 id="tracks-heading">Tracks</h2>
+      <ul id="track-list"></ul>
+    </nav>
+
+    <section class="panel panel-player" id="panel-player" aria-labelledby="track-title">
+      <div>
+        <h2 id="track-title" tabindex="-1">Loading…</h2>
+        <p id="track-source" class="source"></p>
+      </div>
+      <video id="video" controls loop playsinline preload="metadata" aria-describedby="description">
+        <track id="captions" kind="captions" srclang="en" label="What you're hearing" default>
+      </video>
+      <div class="controls">
+        <button type="button" class="btn" id="play" aria-pressed="false">Play</button>
+        <label class="toggle"><input type="checkbox" id="announce" checked> Read the daily descriptions to screen readers</label>
+      </div>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="panel panel-info" id="panel-info" aria-label="About this track">
+      <h3>What the picture shows</h3>
+      <p id="description"></p>
+      <h3>How to listen</h3>
+      <ul id="guide"></ul>
+      <details>
+        <summary>How the sound is made</summary>
+        <p>A Python script reads every frame of the video, turns the colors back into numbers with the map's own color bar, and turns those numbers into music.</p>
+        <img id="features-image" alt="Graphs of the numbers extracted from the video over time.">
+      </details>
+    </section>
+  </section>
+  <button type="button" class="back" id="back">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg>
+    <span>To the forest</span>
+  </button>
   <button type="button" class="snd" id="sound" aria-pressed="false">
     <svg class="on" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
     <svg class="off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M22 9l-6 6"/><path d="M16 9l6 6"/></svg>
@@ -145,16 +136,24 @@
 (function () {
   // ---- Settings you can change ----
   var opts = {
-    treeCount: 4500,   // fewer = smoother on slow computers
+    treeCount: 4500,   // nearby trees that react to the cursor (the same number again is added as a static far backdrop); fewer = smoother on slow computers
     windStrength: 1,   // 0.2 - 2.5
-    volume: 0.5,       // 0 - 1
-    transition: 2.6,   // seconds for the camera to swing up to the bird's-eye view
-    topHeight: 78      // how high the bird's-eye camera flies (higher = smaller-looking trees)
+    volume: 0.25,      // 0 - 1
+    flightSeconds: 2.8, // how long the camera takes to fly to the panel
+    fadeForReducedMotion: false, // true = visitors whose system has animations turned off get a short fade instead of the flight
+    frame: false,       // true = put the grey raised frame around the panels (the earlier "window" look)
+    fill: 0.84,         // how much of the window the panels fill on arrival
+    // Where each panel lies in the clearing: [left, top, right, bottom], 0..1 across the panel area.
+    // "wide" is used on landscape screens, "tall" on portrait screens (phones).
+    layout: {
+      wide: { tracks: [0, 0, 0.17, 1], player: [0.2, 0, 0.74, 1], info: [0.77, 0, 1, 1] },
+      tall: { player: [0, 0, 1, 0.47], tracks: [0, 0.5, 1, 0.7], info: [0, 0.73, 1, 1] }
+    }
   };
 
   function startForest(canvas, opts) {
     const gl = canvas.getContext('webgl2', { antialias: true, alpha: false, powerPreference: 'high-performance' });
-    if (!gl) return { supported: false, stop() {}, setSound() {}, hoverSound() {}, setLayout() {}, go() {}, duck() {}, gust() {} };
+    if (!gl) return { stop() {}, setSound() {}, hoverSound() {} };
     const root = canvas.parentElement || canvas;
     const reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
@@ -170,10 +169,10 @@
     const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
     const nrm = (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
     const put = (arr, p, n, c, leaf) => { arr.push(p[0], p[1], p[2], n[0], n[1], n[2], c[0], c[1], c[2], leaf); };
-    const tri = (arr, a, b, c, col, leaf, hint) => {
+    const tri = (arr, a, b, c, col, leaf, hint, colC) => {
       let n = nrm(cross(sub(b, a), sub(c, a)));
       if (n[0] * hint[0] + n[1] * hint[1] + n[2] * hint[2] < 0) n = [-n[0], -n[1], -n[2]];
-      put(arr, a, n, col, leaf); put(arr, b, n, col, leaf); put(arr, c, n, col, leaf);
+      put(arr, a, n, col, leaf); put(arr, b, n, col, leaf); put(arr, c, n, colC || col, leaf);
     };
 
     const bark = hex('#3a2c22');
@@ -189,14 +188,16 @@
       tri(V, p0, q1, q0, bark, 0, hint);
     }
     const layers = [
-      { b: 0.15, t: 0.62, r: 0.36, col: '#2e6a2b' },
-      { b: 0.36, t: 0.82, r: 0.27, col: '#387b32' },
-      { b: 0.57, t: 1.0, r: 0.18, col: '#438c3a' }
+      { b: 0.15, t: 0.62, r: 0.36, col: '#29622a', inner: 0.32 },
+      { b: 0.36, t: 0.82, r: 0.27, col: '#337431', inner: 0.38 },
+      { b: 0.57, t: 1.0, r: 0.18, col: '#40873a', inner: 1.06 }
     ];
     layers.forEach((L, li) => {
       const N = 7;
       const col = hex(L.col);
-      const under = col.map((v) => v * 0.55);
+      const under = col.map((v) => v * 0.4);
+      // tiers get darker toward the trunk, where the tier above shades them
+      const deep = col.map((v) => v * L.inner);
       const ring = [];
       for (let i = 0; i < N; i++) {
         const a = (i / N) * Math.PI * 2 + li * 0.45;
@@ -207,48 +208,50 @@
       const center = [0, L.b + 0.07, 0];
       for (let i = 0; i < N; i++) {
         const A = ring[i], B = ring[(i + 1) % N];
-        tri(V, A, B, apex, col, 1, [(A[0] + B[0]) / 2, 0.3, (A[2] + B[2]) / 2]);
+        tri(V, A, B, apex, col, 1, [(A[0] + B[0]) / 2, 0.3, (A[2] + B[2]) / 2], deep);
         tri(V, center, B, A, under, 1, [0, -1, 0]);
       }
     });
     const treeVerts = V.length / 10;
 
-    // ---------- a small glade under the headline ----------
-    const GX = 0, GZ = -40;
-    const inGlade = (x, z, grow) => {
-      const a = Math.atan2(z - GZ, x - GX);
-      const edge = 1 + 0.16 * Math.sin(a * 3 + 1.3) + 0.08 * Math.sin(a * 7);
-      const ex = (x - GX) / 13, ez = (z - GZ) / 9.5;
-      return Math.sqrt(ex * ex + ez * ez) < edge * grow;
+    const SUNDIR = (() => { const v = [0.72, 0.62, -0.12], l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; })(); // direction toward the sun
+
+    // ---------- the hidden clearing the camera flies to, with the panel lying in it ----------
+    // far enough out that trees and haze hide it from the home view
+    const CX = 0, CZ = -230;
+    // half-size of the panel: same proportions as the window, so it frames well on any screen
+    const asp0 = Math.max(0.5, Math.min(2.3, (canvas.clientWidth || 16) / (canvas.clientHeight || 9)));
+    const PW = 24 * asp0 / Math.hypot(1, asp0), PH = 24 / Math.hypot(1, asp0);
+    // the panel is a raised frame with a sloped outer edge and the screen set down inside it:
+    // PTOP = height of the frame, PBEZEL = frame width, PFACE = height of the recessed screen, PCHAMFER = width of the slope
+    const PTOP = 0.7, PBEZEL = opts.frame ? 0.9 : 0, PFACE = opts.frame ? 0.25 : 0.02, PCHAMFER = 0.5;
+    // the panels, in world coordinates on the ground (from opts.layout)
+    const tall = asp0 < 1.05;
+    const cards = (opts.cards || []).map((c) => {
+      const f = (tall ? opts.layout.tall : opts.layout.wide)[c.name];
+      const ix0 = CX - PW + PBEZEL, iz0 = CZ - PH + PBEZEL, iw = 2 * (PW - PBEZEL), ih = 2 * (PH - PBEZEL);
+      return { el: c.el, x0: ix0 + f[0] * iw, z0: iz0 + f[1] * ih, x1: ix0 + f[2] * iw, z1: iz0 + f[3] * ih, last: '' };
+    });
+    if (opts.onLayout) opts.onLayout(tall);
+    // below 1 = inside the clearing, above 1 = outside
+    const clearingValue = (x, z) => {
+      const a = Math.atan2(z - CZ, x - CX);
+      const edge = 1 + 0.05 * Math.sin(a * 3 + 0.6) + 0.03 * Math.sin(a * 7 + 2.0);
+      const ex = Math.abs(x - CX) / (PW + 2.6), ez = Math.abs(z - CZ) / (PH + 2.6);
+      return Math.pow(Math.pow(ex, 4) + Math.pow(ez, 4), 0.25) / edge;
     };
+    const inClearing = (x, z, grow) => clearingValue(x, z) < grow;
 
     // ---------- trees (spatial grid for spacing) ----------
     const count = Math.max(100, Math.min(8000, Math.round(opts.treeCount || 4500)));
     const trees = [];
     const cell = 3, grid = new Map();
     const key = (ix, iz) => ix * 100003 + iz;
-    let tries = 0;
-    while (trees.length < count && tries < count * 40) {
-      tries++;
-      const z = 18 - Math.pow(rnd(), 1.25) * 190;
-      const depth = 30 - z;
-      const halfW = 18 + depth * 1.1;
-      const x = rr(-halfW, halfW);
-      if (inGlade(x, z, 1.08)) continue;
-      const minD = 1.4 + depth * 0.005;
-      const ix = Math.floor(x / cell), iz = Math.floor(z / cell);
-      let ok = true;
-      for (let gx = ix - 1; gx <= ix + 1 && ok; gx++) {
-        for (let gz = iz - 1; gz <= iz + 1 && ok; gz++) {
-          const list = grid.get(key(gx, gz));
-          if (!list) continue;
-          for (let i = 0; i < list.length; i++) {
-            const dx = list[i].x - x, dz = list[i].z - z;
-            if (dx * dx + dz * dz < minD * minD) { ok = false; break; }
-          }
-        }
-      }
-      if (!ok) continue;
+    // separate random stream so the dark-tree choice doesn't change the forest layout
+    let seed2 = 9176203;
+    const rnd2 = () => { seed2 = (seed2 * 16807) % 2147483647; return (seed2 - 1) / 2147483646; };
+    const darkPatch = (x, z) => Math.sin(x * 0.045 + 1.7) * Math.sin(z * 0.06 + 0.4) + 0.5 * Math.sin(x * 0.11 - z * 0.09 + 2.0);
+    const makeTree = (x, z) => {
       const H = rr(7, 15);
       const warm = rnd() < 0.06;
       const t = {
@@ -263,14 +266,102 @@
         lz: -0.02 + rr(-0.03, 0.03),
         bx: 0, bz: 0, vx: 0, vz: 0, ag: 0.1, rust: 0, sx: 0.5
       };
+      // roughly a third of the trees are dark, blue-green firs, grouped in patches
+      if (!warm) {
+        const chance = Math.max(0.04, Math.min(0.8, 0.3 + 0.32 * darkPatch(x, z)));
+        if (rnd2() < chance) { const b = 0.5 + rnd2() * 0.24; t.tint = [b * 0.84, b * 0.98, b * 0.94]; }
+      }
+      return t;
+    };
+    const fits = (x, z, minD) => {
+      const ix = Math.floor(x / cell), iz = Math.floor(z / cell);
+      for (let gx = ix - 1; gx <= ix + 1; gx++) {
+        for (let gz = iz - 1; gz <= iz + 1; gz++) {
+          const list = grid.get(key(gx, gz));
+          if (!list) continue;
+          for (let i = 0; i < list.length; i++) {
+            const dx = list[i].x - x, dz = list[i].z - z;
+            if (dx * dx + dz * dz < minD * minD) return false;
+          }
+        }
+      }
+      return true;
+    };
+    let tries = 0;
+    while (trees.length < count && tries < count * 40) {
+      tries++;
+      const z = 18 - Math.pow(rnd(), 1.25) * 190;
+      const depth = 30 - z;
+      const halfW = 18 + depth * 1.1;
+      const x = rr(-halfW, halfW);
+      const minD = 1.4 + depth * 0.005;
+      const ix = Math.floor(x / cell), iz = Math.floor(z / cell);
+      let ok = true;
+      for (let gx = ix - 1; gx <= ix + 1 && ok; gx++) {
+        for (let gz = iz - 1; gz <= iz + 1 && ok; gz++) {
+          const list = grid.get(key(gx, gz));
+          if (!list) continue;
+          for (let i = 0; i < list.length; i++) {
+            const dx = list[i].x - x, dz = list[i].z - z;
+            if (dx * dx + dz * dz < minD * minD) { ok = false; break; }
+          }
+        }
+      }
+      if (!ok) continue;
+      const t = makeTree(x, z);
       trees.push(t);
       const k2 = key(ix, iz);
       if (!grid.has(k2)) grid.set(k2, []);
       grid.get(k2).push(t);
     }
+    // the trees above react to the cursor; everything after NR is a static far backdrop
+    const NR = trees.length;
+    const FAR_EDGE = 530; // distance from the camera where the forest has fully faded into the haze
+    tries = 0;
+    while (trees.length < NR + count && tries < count * 40) {
+      tries++;
+      const z = -172 - rnd() * 360;
+      const depth = 30 - z;
+      const halfW = Math.min(18 + depth * 1.1, FAR_EDGE);
+      const x = rr(-halfW, halfW);
+      if (x * x + depth * depth > FAR_EDGE * FAR_EDGE) continue;
+      if (inClearing(x, z, 1.06)) continue;
+      if (!fits(x, z, 1.4 + depth * 0.005)) continue;
+      const t = makeTree(x, z);
+      trees.push(t);
+      const k2 = key(Math.floor(x / cell), Math.floor(z / cell));
+      if (!grid.has(k2)) grid.set(k2, []);
+      grid.get(k2).push(t);
+    }
+    // a thin band of trees further back still: it only comes into view during the flight to the clearing
+    const nHome = trees.length, nExtra = Math.round(count * 0.27);
+    tries = 0;
+    while (trees.length < nHome + nExtra && tries < nExtra * 40) {
+      tries++;
+      const x = rr(-540, 540), z = rr(-700, -172);
+      if (Math.hypot(x, z + 170) > FAR_EDGE || Math.hypot(x, 30 - z) < FAR_EDGE - 12) continue;
+      if (!fits(x, z, 3)) continue;
+      const t = makeTree(x, z);
+      trees.push(t);
+      const k2 = key(Math.floor(x / cell), Math.floor(z / cell));
+      if (!grid.has(k2)) grid.set(k2, []);
+      grid.get(k2).push(t);
+    }
+    // the cursor effect and the wind sway fade out with distance, so the reactive
+    // trees blend into the static backdrop without a visible seam
+    const sstep = (a, b, v) => { const q = Math.max(0, Math.min(1, (v - a) / (b - a))); return q * q * (3 - 2 * q); };
+    trees.forEach((t) => { const depth = 30 - t.z; t.react = 1 - sstep(100, 195, depth); t.sway = 1 - sstep(150, 200, depth); });
+    // trees around the clearing react to the cursor once the camera is there (wC = how strongly).
+    // They are moved up next to the reactive trees, so the per-frame loop covers trees 0..NA only.
+    trees.forEach((t) => { t.wC = 1 - sstep(55, 105, Math.hypot(t.x - CX, t.z - CZ)); });
+    const backdrop = trees.splice(NR);
+    backdrop.sort((a, b) => (b.wC > 0 ? 1 : 0) - (a.wC > 0 ? 1 : 0));
+    for (const t of backdrop) trees.push(t);
+    let NA = NR;
+    while (NA < trees.length && trees[NA].wC > 0) NA++;
     const NT = trees.length;
     // trees further away sound quieter
-    trees.forEach((t) => { t.bx = t.lx; t.bz = t.lz; t.near = Math.pow(Math.max(0.04, 1 - (30 - t.z - 15) / 170), 1.8); t.clear = false; t.cd = rnd(); });
+    trees.forEach((t) => { t.bx = t.lx; t.bz = t.lz; t.near = Math.pow(Math.max(0.04, 1 - (30 - t.z - 15) / 170), 1.8); });
 
     // ---------- shaders ----------
     const VS = `#version 300 es
@@ -312,20 +403,31 @@ void main(){
     const FS = `#version 300 es
 precision highp float;
 in vec3 vCol; in vec3 vNor; in vec3 vWorld; in float vLeaf; in float vH;
-uniform vec3 uEye; uniform vec3 uFog; uniform vec3 uSkyTop; uniform vec3 uSun; uniform vec3 uSunCol; uniform float uFogK;
+uniform vec3 uEye; uniform vec3 uFog; uniform vec3 uSkyTop; uniform vec3 uSun; uniform vec3 uSunCol; uniform vec2 uRes;
 out vec4 o;
 void main(){
   vec3 n = normalize(vNor);
   float diff = max(dot(n, uSun), 0.0);
-  vec3 amb = mix(vec3(0.16, 0.18, 0.14), vec3(0.40, 0.48, 0.58), n.y*0.5 + 0.5);
+  vec3 amb = mix(vec3(0.12, 0.14, 0.11), vec3(0.34, 0.42, 0.53), n.y*0.5 + 0.5);
   vec3 v = normalize(uEye - vWorld);
   float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0) * 0.2;
   vec3 col = vCol * (amb + diff*uSunCol) + rim * uSunCol * vCol;
-  col *= mix(0.7, 1.0, smoothstep(0.0, 0.55, vH + (1.0 - vLeaf)*0.3));
+  // foliage facing away from the sun goes cooler and bluer
+  col = mix(col, col * vec3(0.80, 0.92, 1.10), (1.0 - diff) * vLeaf * 0.55);
+  // trees get darker toward their base; ground and trunks keep the old gradient
+  float gBase = mix(0.7, 1.0, smoothstep(0.0, 0.55, vH + 0.3));
+  float gLeaf = mix(0.5, 1.0, smoothstep(0.08, 0.7, vH));
+  col *= mix(gBase, gLeaf, vLeaf);
   float d = length(vWorld - uEye);
-  float f = 1.0 - exp(-pow(d*0.0062*uFogK, 1.5));
+  float f = 1.0 - exp(-pow(d*0.0052, 1.5));
   f *= mix(1.0, 0.85, clamp(vWorld.y/30.0, 0.0, 1.0));
-  vec3 fogc = uFog;
+  // everything has fully dissolved into the haze before the forest ends (FAR_EDGE)
+  f = max(f, smoothstep(430.0, 530.0, d));
+  // haze matches the sky behind it, including the sun glow, so there is no seam at the horizon
+  vec2 suv = gl_FragCoord.xy / uRes;
+  float asp = uRes.x / uRes.y;
+  float sd = distance(suv * vec2(asp, 1.0), vec2(0.86 * asp, 1.08));
+  vec3 fogc = uFog + vec3(1.0, 0.93, 0.74) * (0.32 * exp(-sd * 4.0) + 0.38 * exp(-sd * 14.0));
   col = mix(col, fogc, clamp(f, 0.0, 1.0));
   o = vec4(col, 1.0);
 }`;
@@ -366,7 +468,7 @@ void main(){
     const prog = program(VS, FS);
     const sky = program(SKY_VS, SKY_FS);
     const U = {};
-    ['uVP', 'uTime', 'uFlutter', 'uEye', 'uFog', 'uSkyTop', 'uSun', 'uSunCol', 'uFogK'].forEach((n) => { U[n] = gl.getUniformLocation(prog, n); });
+    ['uVP', 'uTime', 'uFlutter', 'uEye', 'uFog', 'uSkyTop', 'uSun', 'uSunCol', 'uRes'].forEach((n) => { U[n] = gl.getUniformLocation(prog, n); });
     const SU = {};
     ['uRes', 'uHorizon', 'uFog', 'uSkyTop', 'uSunCol'].forEach((n) => { SU[n] = gl.getUniformLocation(sky, n); });
 
@@ -388,27 +490,32 @@ void main(){
     trees.forEach((t, i) => { inst.set([t.x, t.z, t.H, t.W, t.tint[0], t.tint[1], t.tint[2], t.rot], i * 8); });
     const instBuf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, inst, gl.DYNAMIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, inst, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(4); gl.vertexAttribPointer(4, 4, gl.FLOAT, false, 32, 0); gl.vertexAttribDivisor(4, 1);
     gl.enableVertexAttribArray(5); gl.vertexAttribPointer(5, 4, gl.FLOAT, false, 32, 16); gl.vertexAttribDivisor(5, 1);
     const bend = new Float32Array(NT * 4);
+    trees.forEach((t, i) => { bend.set([t.lx, t.lz, 0.12, t.phase], i * 4); });
     const bendBuf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, bendBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, bend.byteLength, gl.DYNAMIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, bend, gl.DYNAMIC_DRAW);
     gl.enableVertexAttribArray(6); gl.vertexAttribPointer(6, 4, gl.FLOAT, false, 16, 0); gl.vertexAttribDivisor(6, 1);
     gl.bindVertexArray(null);
 
-    // low-poly ground: a grid of flat-coloured triangles, lighter meadow in the glade
+    // low-poly ground: a grid of flat-coloured triangles, lighter meadow in the clearing
     const G = [];
     const moss = ['#324e26', '#385629', '#2e4824', '#3d5c2c'].map(hex);
     const meadow = ['#67833a', '#6f8c40', '#5f7b36'].map(hex);
     const up = [0, 1, 0];
     const GS = 6;
+    const mix3 = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t];
+    // area around the panel that gets small tiles, because the camera ends up close to it
+    const FX = Math.ceil((PW + 12) / GS) * GS, FZ0 = Math.floor((CZ - PH - 12) / GS) * GS, FZ1 = Math.ceil((CZ + PH + 12) / GS) * GS;
     for (let gx = -300; gx < 300; gx += GS) {
-      for (let gz = -240; gz < 40; gz += GS) {
+      for (let gz = -300; gz < 40; gz += GS) {
+        if (gx >= -FX && gx < FX && gz >= FZ0 && gz < FZ1) continue; // finer tiles are laid here below
         const a = [gx, 0, gz], b = [gx + GS, 0, gz], c = [gx + GS, 0, gz + GS], d = [gx, 0, gz + GS];
         const pick = (cx, cz) => {
-          const m = inGlade(cx, cz, 1.0);
+          const m = inClearing(cx, cz, 1.0);
           const pal = m ? meadow : moss;
           return pal[Math.floor(rnd() * pal.length)];
         };
@@ -416,6 +523,80 @@ void main(){
         put(G, a, up, c1, 0); put(G, b, up, c1, 0); put(G, c, up, c1, 0);
         put(G, a, up, c2, 0); put(G, c, up, c2, 0); put(G, d, up, c2, 0);
       }
+    }
+    // coarse tiles around and beyond the fine grid, out past where the haze takes over
+    const GC = 30;
+    for (let gx = -570; gx < 570; gx += GC) {
+      for (let gz = -720; gz < 60; gz += GC) {
+        if (gx >= -300 && gx < 300 && gz >= -300) continue;
+        const a = [gx, 0, gz], b = [gx + GC, 0, gz], c = [gx + GC, 0, gz + GC], d = [gx, 0, gz + GC];
+        const c1 = moss[Math.floor(rnd() * moss.length)], c2 = moss[Math.floor(rnd() * moss.length)];
+        put(G, a, up, c1, 0); put(G, b, up, c1, 0); put(G, c, up, c1, 0);
+        put(G, a, up, c2, 0); put(G, c, up, c2, 0); put(G, d, up, c2, 0);
+      }
+    }
+    // Small irregular triangles, coloured from a smooth field: the meadow fades softly into the
+    // forest floor and the tones drift gently, instead of a grid of random-coloured squares.
+    {
+      const FS2 = 1.2, nx = Math.round(2 * FX / FS2), nz = Math.round((FZ1 - FZ0) / FS2);
+      const h2 = (i, j) => { const v = Math.sin(i * 127.1 + j * 311.7) * 43758.5453; return v - Math.floor(v); };
+      const vert = (i, j) => {
+        const rim = i === 0 || j === 0 || i === nx || j === nz; // the outer rim stays straight so it meets the big tiles
+        const jx = rim ? 0 : (h2(i, j) - 0.5) * 0.7 * FS2, jz = rim ? 0 : (h2(j + 57, i + 13) - 0.5) * 0.7 * FS2;
+        return [-FX + i * FS2 + jx, 0, FZ0 + j * FS2 + jz];
+      };
+      const mossA = hex('#2e4824'), mossB = hex('#3d5c2c'), meadA = hex('#5f7b36'), meadB = hex('#72903f');
+      const tone = (x, z) => 0.5 + 0.5 * Math.sin(x * 0.31 + Math.sin(z * 0.23) * 1.7) * Math.cos(z * 0.27 - x * 0.11);
+      const triC = (p, q, r, k) => {
+        const x = (p[0] + q[0] + r[0]) / 3, z = (p[2] + q[2] + r[2]) / 3;
+        const t = tone(x, z), m = 1 - sstep(0.88, 1.1, clearingValue(x, z));
+        // the ground darkens a little right next to the panel, which helps it sit on the grass
+        const near = opts.frame || !cards.length
+          ? Math.hypot(Math.max(CX - PW - x, 0, x - CX - PW), Math.max(CZ - PH - z, 0, z - CZ - PH))
+          : Math.min.apply(null, cards.map((c) => Math.hypot(Math.max(c.x0 - x, 0, x - c.x1), Math.max(c.z0 - z, 0, z - c.z1))));
+        const c = mix3(mix3(mossA, mossB, t), mix3(meadA, meadB, t), m), j = (0.955 + 0.09 * k) * (1 - 0.3 * (1 - sstep(0, 2.4, near)));
+        const col = [c[0] * j, c[1] * j, c[2] * j];
+        put(G, p, up, col, 0); put(G, q, up, col, 0); put(G, r, up, col, 0);
+      };
+      for (let i = 0; i < nx; i++) {
+        for (let j = 0; j < nz; j++) {
+          const a = vert(i, j), b = vert(i + 1, j), c = vert(i + 1, j + 1), d = vert(i, j + 1);
+          if (h2(i + 3, j + 7) < 0.5) { triC(a, b, c, h2(i, j + 99)); triC(a, c, d, h2(i + 99, j)); }
+          else { triC(a, b, d, h2(i, j + 99)); triC(b, c, d, h2(i + 99, j)); }
+        }
+      }
+    }
+    // the panel: a raised frame with sloped outer sides and the screen recessed inside it. Each face has
+    // its own direction, so the sun lights the sides differently and the panel reads as a solid object.
+    // Only drawn when opts.frame is true; the HTML panels are placed over the ground on arrival.
+    if (opts.frame) {
+      const body = hex('#56676f'), face = hex('#0d1418');
+      const x0 = CX - PW, x1 = CX + PW, z0 = CZ - PH, z1 = CZ + PH;
+      const c = PCHAMFER, b = PBEZEL, H = PTOP, F = PFACE;
+      const quad = (p, q, r, s2, n, col) => { const nn = nrm(n); [p, q, r, p, r, s2].forEach((v) => put(G, v, nn, col, 0)); };
+      // shadow the panel casts on the grass, away from the sun (a flat dark shape just above the ground)
+      const shade = mix3(hex('#5f7b36'), hex('#72903f'), 0.5).map((v) => v * 0.42);
+      const sx = -SUNDIR[0] / SUNDIR[1] * H, sz = -SUNDIR[2] / SUNDIR[1] * H;
+      quad([x0 + sx, 0.03, z0 + sz], [x1 + sx, 0.03, z0 + sz], [x1 + sx, 0.03, z1 + sz], [x0 + sx, 0.03, z1 + sz], up, shade);
+      quad([x0, 0.03, z0], [x0 + sx, 0.03, z0 + sz], [x0 + sx, 0.03, z1 + sz], [x0, 0.03, z1], up, shade);
+      quad([x0, 0.03, z1], [x1, 0.03, z1], [x1 + sx, 0.03, z1 + sz], [x0 + sx, 0.03, z1 + sz], up, shade);
+      // sloped outer sides
+      quad([x1, 0, z0], [x1, 0, z1], [x1 - c, H, z1 - c], [x1 - c, H, z0 + c], [H, c, 0], body);
+      quad([x0, 0, z0], [x0, 0, z1], [x0 + c, H, z1 - c], [x0 + c, H, z0 + c], [-H, c, 0], body);
+      quad([x0, 0, z0], [x1, 0, z0], [x1 - c, H, z0 + c], [x0 + c, H, z0 + c], [0, c, -H], body);
+      quad([x0, 0, z1], [x1, 0, z1], [x1 - c, H, z1 - c], [x0 + c, H, z1 - c], [0, c, H], body);
+      // flat top of the frame
+      quad([x0 + c, H, z0 + c], [x1 - c, H, z0 + c], [x1 - b, H, z0 + b], [x0 + b, H, z0 + b], up, body);
+      quad([x0 + c, H, z1 - c], [x1 - c, H, z1 - c], [x1 - b, H, z1 - b], [x0 + b, H, z1 - b], up, body);
+      quad([x0 + c, H, z0 + c], [x0 + b, H, z0 + b], [x0 + b, H, z1 - b], [x0 + c, H, z1 - c], up, body);
+      quad([x1 - c, H, z0 + c], [x1 - b, H, z0 + b], [x1 - b, H, z1 - b], [x1 - c, H, z1 - c], up, body);
+      // inner walls going down to the screen, each facing inward
+      quad([x0 + b, H, z0 + b], [x0 + b, H, z1 - b], [x0 + b, F, z1 - b], [x0 + b, F, z0 + b], [1, 0, 0], body);
+      quad([x1 - b, H, z0 + b], [x1 - b, H, z1 - b], [x1 - b, F, z1 - b], [x1 - b, F, z0 + b], [-1, 0, 0], body);
+      quad([x0 + b, H, z0 + b], [x1 - b, H, z0 + b], [x1 - b, F, z0 + b], [x0 + b, F, z0 + b], [0, 0, 1], body);
+      quad([x0 + b, H, z1 - b], [x1 - b, H, z1 - b], [x1 - b, F, z1 - b], [x0 + b, F, z1 - b], [0, 0, -1], body);
+      // the recessed screen
+      quad([x0 + b, F, z0 + b], [x1 - b, F, z0 + b], [x1 - b, F, z1 - b], [x0 + b, F, z1 - b], up, face);
     }
     const groundVerts = G.length / 10;
     const groundVao = gl.createVertexArray();
@@ -456,8 +637,7 @@ void main(){
     // ---------- sound: synthesised leaf rustle + wind whoosh ----------
     let audio = null;
     let soundOn = false;
-    let duckK = 1;   // turned down while a jukebox video is playing
-    const vol = () => Math.max(0, Math.min(1, opts.volume ?? 0.5)) * duckK;
+    const vol = () => Math.max(0, Math.min(1, opts.volume ?? 0.5));
     const initAudio = () => {
       if (audio) { if (audio.ctx.state === 'suspended') audio.ctx.resume(); return; }
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -513,105 +693,20 @@ void main(){
 
     // ---------- state ----------
     const FOG = hex('#9dbcd3'), SKYTOP = hex('#2766a6');
-    const SUN = nrm([0.55, 0.75, 0.35]);
+    const SUN = SUNDIR;
     const SUNCOL = [0.88, 0.81, 0.68];
     let cw = 1, ch = 1, dpr = 1;
     const cam = { x: 0, y: 0 };
+    // view: where the camera is heading (0 = home, 1 = above the panel); fly: where it is right now
+    let view = 0, fly = 0, arrived = false, cutTimer = 0;
+    const FLIGHT = Math.max(0.5, opts.flightSeconds || 2.8);
+    const FILL = opts.fill || 0.84; // how much of the window the panels fill on arrival
+    const s5 = (v) => { v = v < 0 ? 0 : v > 1 ? 1 : v; return v * v * v * (v * (v * 6 - 15) + 10); };
     const pointer = { nx: 0, ny: 0, speed: 0 };
     const puffs = [];
     let last = null;
     let raf = 0, prev = performance.now(), time = 0;
     const scr = new Float32Array(6);
-
-    // ---------- transition: 0 = home view, 1 = bird's-eye view ----------
-    const view = { t: 0, to: 0, wait: 0, dur: 1, moving: false };
-    let arrived = null;
-    const easeIO = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
-    const smooth = (a, b, x) => { const u = Math.min(1, Math.max(0, (x - a) / (b - a))); return u * u * (3 - 2 * u); };
-    const TOP_FOV = 50 * Math.PI / 180;
-    const EL0 = Math.atan2(30, 70), DIST0 = Math.hypot(30, 70);   // the home camera, seen from the glade
-    let gustT = -1;
-    let lastE = -1, clearDirty = true;
-    const panels = [];   // { el, rect: {x, y, w, h} on screen at the end, world: {x0, z0, x1, z1} }
-    const corners = new Float32Array(8);
-
-    // screen position in the final bird's-eye view -> spot on the ground
-    const toGround = (sx, sy) => {
-      const halfH = opts.topHeight * Math.tan(TOP_FOV / 2), halfW = halfH * (cw / ch);
-      return [GX + (sx / cw * 2 - 1) * halfW, GZ - (1 - sy / ch * 2) * halfH];
-    };
-    const setLayout = (list) => {
-      resize();
-      panels.length = 0;
-      list.forEach((p) => {
-        const a = toGround(p.rect.x, p.rect.y), b = toGround(p.rect.x + p.rect.w, p.rect.y + p.rect.h);
-        panels.push({ el: p.el, rect: p.rect, world: { x0: a[0], z0: a[1], x1: b[0], z1: b[1] }, shown: null });
-      });
-      // trees whose crown touches a clearing get blown away during the transition
-      for (let i = 0; i < NT; i++) {
-        const t = trees[i], r = t.W * 0.42 + 0.6;
-        t.clear = panels.some((p) => {
-          const dx = Math.max(p.world.x0 - t.x, 0, t.x - p.world.x1), dz = Math.max(p.world.z0 - t.z, 0, t.z - p.world.z1);
-          return dx * dx + dz * dz < r * r;
-        });
-      }
-      clearDirty = true;
-    };
-    const go = (target, o) => {
-      o = o || {};
-      view.to = target;
-      view.wait = o.wait || 0;
-      view.dur = Math.max(o.dur != null ? o.dur : (opts.transition || 2.6), 0.0001);
-      if (o.instant) { view.t = target; view.wait = 0; }
-      view.moving = true;
-    };
-    // a gust of wind sweeping across the screen, left to right
-    const gust = () => { gustT = 0; };
-
-    // CSS matrix that lays a w x h box onto 4 screen points (top-left, top-right, bottom-right, bottom-left)
-    const quadMatrix = (w, h, q) => {
-      const x0 = q[0], y0 = q[1], x1 = q[2], y1 = q[3], x2 = q[4], y2 = q[5], x3 = q[6], y3 = q[7];
-      const sx = x0 - x1 + x2 - x3, sy = y0 - y1 + y2 - y3;
-      let a, b, c, d, e, f, g, k;
-      if (Math.abs(sx) < 1e-6 && Math.abs(sy) < 1e-6) { a = x1 - x0; b = x2 - x1; c = x0; d = y1 - y0; e = y2 - y1; f = y0; g = 0; k = 0; }
-      else {
-        const dx1 = x1 - x2, dx2 = x3 - x2, dy1 = y1 - y2, dy2 = y3 - y2;
-        const den = dx1 * dy2 - dx2 * dy1 || 1e-9;
-        g = (sx * dy2 - dx2 * sy) / den; k = (dx1 * sy - sx * dy1) / den;
-        a = x1 - x0 + g * x1; b = x3 - x0 + k * x3; c = x0;
-        d = y1 - y0 + g * y1; e = y3 - y0 + k * y3; f = y0;
-      }
-      a /= w; d /= w; g /= w; b /= h; e /= h; k /= h;
-      return 'matrix3d(' + [a, d, 0, g, b, e, 0, k, 0, 0, 1, 0, c, f, 0, 1].join(',') + ')';
-    };
-    const projectTo = (m, x, y, z, out, o) => {
-      const w = m[3] * x + m[7] * y + m[11] * z + m[15];
-      if (w <= 0.01) return false;
-      out[o] = ((m[0] * x + m[4] * y + m[8] * z + m[12]) / w * 0.5 + 0.5) * cw;
-      out[o + 1] = (0.5 - (m[1] * x + m[5] * y + m[9] * z + m[13]) / w * 0.5) * ch;
-      return true;
-    };
-    const updatePanels = (VP, e) => {
-      const op = smooth(0.3, 0.8, e);
-      for (const p of panels) {
-        const st = p.el.style;
-        if (op <= 0.001) {
-          if (p.shown !== false) { st.opacity = '0'; st.visibility = 'hidden'; p.shown = false; }
-          continue;
-        }
-        st.width = p.rect.w + 'px'; st.height = p.rect.h + 'px';
-        if (e >= 0.9999) {
-          st.transform = 'translate(' + p.rect.x + 'px,' + p.rect.y + 'px)';
-        } else {
-          const W = p.world;
-          const ok = projectTo(VP, W.x0, 0, W.z0, corners, 0) && projectTo(VP, W.x1, 0, W.z0, corners, 2) &&
-                     projectTo(VP, W.x1, 0, W.z1, corners, 4) && projectTo(VP, W.x0, 0, W.z1, corners, 6);
-          if (!ok) { st.visibility = 'hidden'; p.shown = false; continue; }
-          st.transform = quadMatrix(p.rect.w, p.rect.h, corners);
-        }
-        st.opacity = op.toFixed(3); st.visibility = 'visible'; p.shown = true;
-      }
-    };
 
     const resize = () => {
       const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
@@ -624,7 +719,6 @@ void main(){
     };
 
     const onMove = (e) => {
-      if (e.target && e.target.closest && e.target.closest('.panel')) { last = null; return; }
       const rect = canvas.getBoundingClientRect();
       const sc = (canvas.clientWidth || 1) / (rect.width || 1);
       const x = (e.clientX - rect.left) * sc, y = (e.clientY - rect.top) * sc;
@@ -648,6 +742,7 @@ void main(){
     root.addEventListener('pointermove', onMove);
     root.addEventListener('pointerleave', onLeave);
     root.addEventListener('pointercancel', onLeave);
+    cards.forEach((c) => c.el.addEventListener('pointerenter', onLeave)); // the cursor is over a panel, not the forest
 
     const segDist = (px, py, ax, ay, bx, by) => {
       const vx = bx - ax, vy = by - ay;
@@ -667,54 +762,54 @@ void main(){
 
     const frame = (now) => {
       raf = requestAnimationFrame(frame);
-      const rawDt = Math.min(Math.max((now - prev) / 1000, 0), 0.25);   // real time, for the transition
-      const dt = Math.min(rawDt, 1 / 30);
+      const dt = Math.min(Math.max((now - prev) / 1000, 0), 1 / 30);
       prev = now;
       time += dt;
       resize();
 
       // high camera looking down over the forest, with gentle parallax
-      // advance the transition
-      if (view.moving) {
-        if (view.wait > 0) view.wait -= rawDt;
-        else {
-          const step = rawDt / view.dur;
-          view.t = view.t < view.to ? Math.min(view.to, view.t + step) : Math.max(view.to, view.t - step);
-          if (view.t === view.to) { view.moving = false; arrived = view.to; }
-        }
-      }
-      const e = easeIO(view.t);
-      const k = 1 - e;   // pointer parallax fades out in the bird's-eye view
-
       const ease = Math.min(1, dt * 2);
       cam.x += (pointer.nx - cam.x) * ease;
       cam.y += (pointer.ny - cam.y) * ease;
       const aspect = cw / ch;
-      // orbit up around the glade: from the low home angle to straight down
-      const el = EL0 + (Math.PI / 2 - EL0) * e;
-      const dist = DIST0 + (opts.topHeight - DIST0) * e;
-      const target = [cam.x * 0.5 * k, 0, GZ];
-      const eye = [target[0] + cam.x * 1.1 * k, dist * Math.sin(el) - cam.y * k, GZ + dist * Math.cos(el)];
-      const upv = [0, Math.cos(el), -Math.sin(el)];
-      const fov0 = (aspect < 1 ? 66 : 50) * Math.PI / 180;
-      const fov = fov0 + (TOP_FOV - fov0) * e;
-      const VP = mul(perspective(fov, aspect, 0.5, 700), lookAt(eye, target, upv));
+      const fov = (aspect < 1 ? 66 : 50) * Math.PI / 180;
+      // flight between the home view and the clearing
+      if (fly !== view) {
+        const stp = dt / FLIGHT;
+        fly = view > fly ? Math.min(view, fly + stp) : Math.max(view, fly - stp);
+      }
+      const go = s5(fly);                       // forward travel, eased at both ends
+      const lift = s5((fly - 0.4) / 0.6);       // climb to the final height in the second half
+      const dip = Math.sin(Math.PI * Math.min(1, fly / 0.8)); // skim down toward the treetops on the way
+      const tanH = Math.tan(fov / 2);
+      const endH = PFACE + Math.max((PH - PBEZEL) / (FILL * tanH), (PW - PBEZEL) / (FILL * tanH * aspect));
+      const par = 1 - go;                        // pointer parallax only at home, so the panel stays square-on
+      const eye = [cam.x * 1.6 * par + CX * go, (30 - cam.y * 1.0) * (1 - lift) + endH * lift - 6 * dip * dip, 30 + (CZ - 30) * go];
+      // the camera looks at the ground a fixed distance ahead; that distance shrinks to nothing
+      // at the end, so it tips down onto the panel as it arrives
+      const ahead = 70 * (1 - s5((fly - 0.35) / 0.65));
+      const tgt = [cam.x * 0.5 * par + CX * go, 0, eye[2] - ahead];
+      const fwd = nrm(sub(tgt, eye));
+      const upk = sstep(0.55, 0.98, -fwd[1]);    // "up" turns from the sky to the far side of the clearing when looking straight down
+      const VP = mul(perspective(fov, aspect, 0.5, 700), lookAt(eye, tgt, [0, 1 - upk, -upk]));
+      const flightAmt = Math.sin(Math.PI * fly);
+
+      // place the HTML panels exactly over their spots on the ground once the camera has settled above them
+      const there = view === 1 && fly === 1;
+      if (there) {
+        for (const c of cards) {
+          if (!project(VP, c.x0, PFACE, c.z0, 0) || !project(VP, c.x1, PFACE, c.z1, 2)) continue;
+          const rect = scr[0].toFixed(1) + ',' + scr[1].toFixed(1) + ',' + scr[2].toFixed(1) + ',' + scr[3].toFixed(1);
+          if (rect === c.last) continue;
+          c.last = rect;
+          const st = c.el.style;
+          st.left = scr[0] + 'px'; st.top = scr[1] + 'px';
+          st.width = (scr[2] - scr[0]) + 'px'; st.height = (scr[3] - scr[1]) + 'px';
+        }
+      }
+      if (there !== arrived) { arrived = there; root.classList.toggle('arrived', there); if (opts.onArrive) opts.onArrive(there); }
       let horizon = 1.2;
       if (project(VP, eye[0], 0, eye[2] - 3000, 0)) horizon = 1 - scr[1] / ch;
-
-      if (gustT >= 0) {
-        gustT += rawDt;
-        const g = gustT / 0.9;
-        if (g < 1) {
-          const xs = g * cw * 1.3 - cw * 0.15;
-          for (let n = 0; n < 4; n++) {
-            puffs.push({ x: xs + (Math.random() - 0.5) * 80, y: (0.15 + Math.random() * 0.85) * ch, vx: 700, vy: -70,
-                         ux: 0.99, uy: -0.1, spd: 1800, r: 70, life: 1 });
-          }
-          if (puffs.length > 90) puffs.splice(0, puffs.length - 90);
-          pointer.speed = Math.max(pointer.speed, 2600);
-        } else gustT = -1;
-      }
 
       for (let i = puffs.length - 1; i >= 0; i--) {
         const p = puffs[i];
@@ -729,10 +824,12 @@ void main(){
       const K = 0.2 * (opts.windStrength ?? 1);
       const gdx = 0.97, gdz = -0.24;
       let rustSum = 0, rustX = 0;
-      for (let i = 0; i < NT; i++) {
+      for (let i = 0; i < NA; i++) {
         const t = trees[i];
+        // blend each tree's response between the home view and the clearing view
+        const react = t.react + (t.wC - t.react) * go, sway = t.sway + (t.wC - t.sway) * go;
         let fx = 0, fy = 0;
-        if (puffs.length && project(VP, t.x, 0, t.z, 0) && project(VP, t.x + t.bx * t.H, t.H * 0.95, t.z + t.bz * t.H, 2) && project(VP, t.x + 0.34 * t.W, t.H * 0.45, t.z, 4)) {
+        if (puffs.length && react > 0.001 && project(VP, t.x, 0, t.z, 0) && project(VP, t.x + t.bx * t.H, t.H * 0.95, t.z + t.bz * t.H, 2) && project(VP, t.x + 0.34 * t.W, t.H * 0.45, t.z, 4)) {
           t.sx = scr[0] / cw;
           const midX = (scr[0] + scr[2]) / 2, midY = (scr[1] + scr[3]) / 2;
           const crown = Math.hypot(scr[4] - midX, scr[5] - midY) * 0.25;
@@ -747,12 +844,11 @@ void main(){
             fy += p.vy * fall;
           }
         }
-        let Fx = fx * K, Fz = fy * K;
-        if (t.clear && e > 0.02 && e < 0.85) Fx += 6 * (opts.windStrength ?? 1);   // blown out of the clearing
+        let Fx = fx * K * react, Fz = fy * K * react;
         const fm = Math.hypot(Fx, Fz);
         if (fm > 22) { Fx *= 22 / fm; Fz *= 22 / fm; }
 
-        const g = (reduce ? 0.015 : 0.03) + (reduce ? 0.02 : 0.07) * Math.pow(0.5 + 0.5 * Math.sin(time * 0.65 - t.x * 0.08 + t.z * 0.05 + t.phase * 0.05), 4);
+        const g = sway * ((reduce ? 0.015 : 0.03) + (reduce ? 0.02 : 0.07) * Math.pow(0.5 + 0.5 * Math.sin(time * 0.65 - t.x * 0.08 + t.z * 0.05 + t.phase * 0.05), 4));
         const tx = t.lx + g * gdx, tz = t.lz + g * gdz;
         t.vx += (t.k * (tx - t.bx) - t.c * t.vx + Fx) * dt;
         t.vz += (t.k * (tz - t.bz) - t.c * t.vz + Fz) * dt;
@@ -765,25 +861,12 @@ void main(){
         t.ag += (target - t.ag) * Math.min(1, dt * (target > t.ag ? 10 : 1.8));
 
         t.rust = Math.max(t.rust * Math.exp(-dt * 9), Math.min(1, fm * 0.08));
-        if (t.rust > 0.01) { const w = t.rust * t.near; rustSum += w; rustX += w * t.sx; }
+        if (t.rust > 0.01) { const w = t.rust * (t.near + (t.wC - t.near) * go); rustSum += w; rustX += w * t.sx; }
 
         bend[i * 4] = t.bx;
         bend[i * 4 + 1] = t.bz;
         bend[i * 4 + 2] = t.ag;
         bend[i * 4 + 3] = t.phase;
-      }
-
-      // shrink the trees that stand in a clearing
-      if (clearDirty || Math.abs(e - lastE) > 1e-4) {
-        for (let i = 0; i < NT; i++) {
-          const t = trees[i];
-          const s = t.clear ? 1 - smooth(0.08 + t.cd * 0.25, 0.5 + t.cd * 0.25, e) : 1;
-          inst[i * 8 + 2] = t.H * s;
-          inst[i * 8 + 3] = t.W * s;
-        }
-        gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, inst);
-        lastE = e; clearDirty = false;
       }
 
       // drive the sound from how much of the forest is being stirred
@@ -795,12 +878,12 @@ void main(){
         const leaf = inten * 0.26 * audio.flick;
         audio.leafG.gain.setTargetAtTime(leaf, at, 0.09);
         audio.leafBP.frequency.setTargetAtTime(1300 + inten * 900, at, 0.25);
-        const sp = Math.min(1, pointer.speed / 3000) * Math.min(1, inten * 3);
+        const sp = Math.max(Math.min(1, pointer.speed / 3000) * Math.min(1, inten * 3), flightAmt * 0.45);
         audio.whooshG.gain.setTargetAtTime(sp * 0.18, at, 0.15);
         audio.whooshLP.frequency.setTargetAtTime(320 + sp * 500, at, 0.2);
         audio.bedG.gain.setTargetAtTime(0.02 + 0.012 * Math.sin(time * 0.65), at, 0.5);
         if (audio.pan && rustSum > 0.05) audio.pan.pan.setTargetAtTime(Math.max(-0.8, Math.min(0.8, (rustX / rustSum) * 2 - 1)), at, 0.15);
-        audio.master.gain.setTargetAtTime(vol(), at, 0.2);
+        audio.master.gain.setTargetAtTime(vol() * (1 - 0.75 * go), at, 0.2); // forest sound drops back at the panel, so the tracks can be heard
       }
 
       // draw
@@ -828,7 +911,7 @@ void main(){
       gl.uniform3fv(U.uSkyTop, SKYTOP);
       gl.uniform3fv(U.uSun, SUN);
       gl.uniform3fv(U.uSunCol, SUNCOL);
-      gl.uniform1f(U.uFogK, 1 - 0.45 * e);
+      gl.uniform2f(U.uRes, canvas.width, canvas.height);
 
       gl.bindVertexArray(groundVao);
       gl.vertexAttrib4f(4, 0, 0, 1, 1);
@@ -838,13 +921,9 @@ void main(){
 
       gl.bindVertexArray(treeVao);
       gl.bindBuffer(gl.ARRAY_BUFFER, bendBuf);
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, bend);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, bend, 0, NA * 4);
       gl.drawArraysInstanced(gl.TRIANGLES, 0, treeVerts, NT);
       gl.bindVertexArray(null);
-
-      if (panels.length) updatePanels(VP, e);
-      // tell the page we've arrived (after the panels are visible, so focus can move into them)
-      if (arrived !== null) { const a = arrived; arrived = null; if (opts.onArrive) opts.onArrive(a); }
     };
     resize();
     raf = requestAnimationFrame(frame);
@@ -866,15 +945,26 @@ void main(){
       });
     };
 
+    // v: 1 = fly to the panel, 0 = fly home. instant skips the flight (used when the page opens on #explore).
+    const setView = (v, instant) => {
+      v = v ? 1 : 0;
+      clearTimeout(cutTimer);
+      if (instant) { view = fly = v; return; }
+      if (reduce && opts.fadeForReducedMotion) {
+        // reduced-motion setting: a short fade instead of the flight
+        root.classList.add('cut');
+        cutTimer = setTimeout(() => { view = fly = v; root.classList.remove('cut'); }, 320);
+        return;
+      }
+      view = v;
+    };
+
     return {
-      supported: true,
       setSound,
       hoverSound,
-      setLayout,
-      go,
-      gust,
-      duck(on) { duckK = on ? 0.15 : 1; if (audio && soundOn) audio.master.gain.setTargetAtTime(vol(), audio.ctx.currentTime, 0.3); },
+      setView,
       stop() {
+        clearTimeout(cutTimer);
         cancelAnimationFrame(raf);
         root.removeEventListener('pointermove', onMove);
         root.removeEventListener('pointerleave', onLeave);
@@ -886,122 +976,71 @@ void main(){
     };
   }
 
-  // ---------- page: home <-> jukebox ----------
   var hero = document.getElementById('hero');
-  var intro = document.getElementById('intro');
   var stage = document.getElementById('stage');
-  var cta = document.querySelector('.cta');
-  var title = document.getElementById('title');
   var video = document.getElementById('video');
-  var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  var state = 'home';
-  var anims = [];
-
-  // split the title into letters so they can blow away one by one
-  var letters = [];
-  (function () {
-    var text = title.textContent.trim();
-    title.setAttribute('aria-label', text);
-    title.textContent = '';
-    text.split(' ').forEach(function (word, i) {
-      if (i) title.appendChild(document.createTextNode(' '));
-      var w = document.createElement('span');
-      w.className = 'word'; w.setAttribute('aria-hidden', 'true');
-      Array.from(word).forEach(function (c) {
-        var s = document.createElement('span'); s.className = 'ch'; s.textContent = c;
-        w.appendChild(s); letters.push(s);
-      });
-      title.appendChild(w);
-    });
-  })();
-
-  opts.onArrive = function (where) {
-    if (where === 1 && state === 'listen') {
-      stage.inert = false;
-      document.getElementById('track-title').focus({ preventScroll: true });
-    }
-    if (where === 0 && state === 'home') {
-      intro.inert = false;
-      cta.focus({ preventScroll: true });
-    }
+  opts.cards = ['tracks', 'player', 'info'].map(function (n) { return { name: n, el: document.getElementById('panel-' + n) }; });
+  opts.onLayout = function (tall) { stage.classList.toggle('tall', tall); };
+  opts.onArrive = function (there) {
+    stage.inert = !there;
+    if (there) document.getElementById('track-title').focus({ preventScroll: true });
   };
   var forest = startForest(document.getElementById('forest'), opts);
 
-  // where each panel ends up = the invisible layout grid; tell the forest so it can clear space
-  function measure() {
-    var h = hero.getBoundingClientRect();
-    var list = Array.prototype.map.call(document.querySelectorAll('.layout [data-panel]'), function (slot) {
-      var r = slot.getBoundingClientRect();
-      return { el: document.getElementById('panel-' + slot.dataset.panel), rect: { x: r.left - h.left, y: r.top - h.top, w: r.width, h: r.height } };
+  // ---- "Check it out": fly to the panel; the back button, Esc and the browser's back button fly home ----
+  var heroMain = hero.querySelector('main');
+  // the tagline stays on one line and is sized to be about as wide as the title above it
+  var titleEl = hero.querySelector('h1'), tagline = hero.querySelector('.tagline');
+  var textWidth = function (el) { var r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().width; };
+  var fitTagline = function () {
+    tagline.style.whiteSpace = 'nowrap';
+    tagline.style.fontSize = '20px';
+    var size = 20 * textWidth(titleEl) * 0.97 / (textWidth(tagline) || 1);
+    if (size < 13) { tagline.style.whiteSpace = 'normal'; size = 15; } // very narrow screens: let it wrap instead of shrinking too far
+    tagline.style.fontSize = size.toFixed(2) + 'px';
+  };
+  fitTagline();
+  window.addEventListener('resize', fitTagline);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitTagline);
+
+  var show = function (v, instant) {
+    hero.classList.toggle('away', !!v);
+    heroMain.inert = !!v;
+    if (!v) { stage.inert = true; if (!video.paused) video.pause(); } // leaving the clearing: stop the track
+    forest.setView(v, instant);
+  };
+  var goHome = function () {
+    if (location.hash !== '#explore') return;
+    if (history.state && history.state.explore) history.back();
+    else { history.replaceState(null, '', location.pathname + location.search); show(0); }
+  };
+  if (forest.setView) {
+    document.querySelector('.cta').addEventListener('click', function (e) {
+      e.preventDefault();
+      if (location.hash !== '#explore') history.pushState({ explore: true }, '', '#explore');
+      show(1);
     });
-    forest.setLayout(list);
+    document.getElementById('back').addEventListener('click', goHome);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') goHome(); });
+    window.addEventListener('popstate', function () { show(location.hash === '#explore' ? 1 : 0); });
+    if (location.hash === '#explore') show(1, true);
   }
-
-  function blowAway(instant) {
-    anims.forEach(function (a) { a.cancel(); });
-    anims = [];
-    letters.concat([cta]).forEach(function (el, i) {
-      var far = 0.45 + Math.random() * 0.6;
-      var frames = reduce ? [{ opacity: 1 }, { opacity: 0 }] : [
-        { transform: 'translate(0px, 0px) rotate(0deg) scale(1)', opacity: 1, filter: 'blur(0px)' },
-        { transform: 'translate(' + Math.round(window.innerWidth * far) + 'px, ' + Math.round(-40 - Math.random() * 220) + 'px) rotate(' +
-                     Math.round(Math.random() * 140 - 40) + 'deg) scale(' + (0.4 + Math.random() * 0.4).toFixed(2) + ')', opacity: 0, filter: 'blur(8px)' }
-      ];
-      anims.push(el.animate(frames, {
-        duration: instant ? 0 : (reduce ? 250 : 1000 + Math.random() * 400),
-        delay: instant || reduce ? 0 : i * 38 + (el === cta ? 120 : 0),
-        easing: 'cubic-bezier(.55,0,.8,.25)', fill: 'forwards'
-      }));
-    });
-  }
-
-  function goListen(push, instant) {
-    if (state === 'listen') return;
-    state = 'listen';
-    if (push) history.pushState({ view: 'listen' }, '', '#listen');
-    intro.inert = true;
-    measure();
-    blowAway(instant);
-    if (!instant && !reduce) forest.gust();
-    forest.go(1, { wait: instant || reduce ? 0 : 0.35, dur: reduce ? 0.0001 : undefined, instant: instant });
-  }
-
-  function goHome(instant) {
-    if (state === 'home') return;
-    state = 'home';
-    stage.inert = true;
-    if (!video.paused) video.pause();
-    forest.go(0, { dur: reduce || instant ? 0.0001 : 2.0, instant: instant });
-    var back = function () { anims.forEach(function (a) { a.reverse(); }); };
-    if (instant || reduce) back(); else setTimeout(back, 1100);
-  }
-
-  if (forest.supported) {
-    cta.addEventListener('click', function (e) { e.preventDefault(); goListen(true, false); });
-    document.getElementById('back').addEventListener('click', function () {
-      if (history.state && history.state.view === 'listen') history.back(); else goHome(false);
-    });
-    window.addEventListener('popstate', function () {
-      if (location.hash === '#listen') goListen(false, false); else goHome(false);
-    });
-    new ResizeObserver(function () { measure(); }).observe(hero);
-    measure();
-    // links like index.html#listen or index.html?track=gmao_t2m open the jukebox straight away
-    if (location.hash === '#listen' || new URLSearchParams(location.search).get('track')) goListen(false, true);
-  }
-
-  // turn the forest down while a track plays
-  video.addEventListener('play', function () { forest.duck(true); });
-  video.addEventListener('pause', function () { forest.duck(false); });
-
   var btn = document.getElementById('sound');
-  btn.addEventListener('click', function () {
-    var on = btn.getAttribute('aria-pressed') !== 'true';
+  // The sound button is the master switch: it controls the forest sound and the player inside the panel.
+  var soundOn = false, soundTouched = false;
+  var eachMedia = function (fn) { fn(video); };
+  var setSound = function (on) {
+    soundOn = on;
     btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     btn.querySelector('span').textContent = on ? 'Sound on' : 'Sound off';
     forest.setSound(on);
-  });
-  cta.addEventListener('mouseenter', function () { forest.hoverSound(); });
+    eachMedia(function (m) { m.muted = !on; });
+  };
+  btn.addEventListener('click', function () { soundTouched = true; setSound(!soundOn); });
+  video.muted = !soundOn;
+  // Pressing play turns the sound on, unless the visitor has switched it off themselves.
+  video.addEventListener('play', function () { if (!soundOn && !soundTouched) setSound(true); });
+  document.querySelector('.cta').addEventListener('mouseenter', function () { forest.hoverSound(); });
 })();
 </script>
 <!-- the jukebox logic (track list, video, captions, screen-reader announcements) -->
