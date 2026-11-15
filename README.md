@@ -9,9 +9,11 @@ as you watch. Created for the NASA SpaceApps
 **[Create a track](https://krecony.github.io/nasa/studio/)** ·
 [Source code](https://github.com/krecony/nasa)
 
-<video src="media/demo.mp4" controls width="100%">
-  <a href="media/demo.mp4">Watch the demo</a>
-</video>
+
+
+https://github.com/user-attachments/assets/d23c8828-d9ce-4975-a33b-ae719c44ef69
+
+
 
 ## What it does
 
