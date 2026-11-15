@@ -13,6 +13,8 @@
   .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .hero main { position: relative; height: 100%; box-sizing: border-box; padding: 0 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 44px; text-align: center; }
   .hero h1 { margin: 0; max-width: 12ch; font-family: 'Bricolage Grotesque', Inter, sans-serif; font-weight: 800; font-size: clamp(3.5rem, 10.5vw, 10.5rem); line-height: 0.9; letter-spacing: -0.04em; color: #F3EEE0; text-shadow: 0 2px 6px rgba(10,30,20,0.35), 0 8px 48px rgba(10,30,20,0.6); }
+  .hero .title h1 { margin-inline: auto; }
+  .hero .tagline { margin: 4px auto 0; white-space: nowrap; font: 500 clamp(0.95rem, 2.2vw, 2.2rem)/1.3 Inter, system-ui, sans-serif; letter-spacing: 0.04em; color: #F3EEE0; text-shadow: 0 1px 4px rgba(10,30,20,0.55), 0 4px 24px rgba(10,30,20,0.6); }
   .cta { display: inline-flex; align-items: center; gap: 12px; height: 60px; padding: 0 30px 0 34px; border: 0; border-radius: 999px; background: #F3EEE0; color: #10201F; font: 600 18px/1 Inter, system-ui, sans-serif; letter-spacing: -0.01em; text-decoration: none; cursor: pointer; box-shadow: 0 10px 30px rgba(4,12,16,0.35); transition: background-color .2s ease, transform .2s ease, box-shadow .2s ease; }
   .cta:hover { background: #fff; transform: translateY(-2px); box-shadow: 0 14px 36px rgba(4,12,16,0.45); }
   .cta:active { transform: translateY(0); }
@@ -29,9 +31,10 @@
   .hero.cut canvas { opacity: 0; }
   .hero main { transition: opacity .4s ease, transform .7s ease; }
   .hero.away main { opacity: 0; transform: scale(1.08); pointer-events: none; }
-  .screen { position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: hidden; border-radius: 4px; background: #010d00; opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s linear .2s; }
+  .screen { position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: hidden; border-radius: 2px; background: #010d00; opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s linear .2s; }
   .hero.arrived .screen { opacity: 1; visibility: visible; transition: opacity .35s ease; }
   .screen iframe { display: block; width: 100%; height: 100%; border: 0; }
+  .screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; box-shadow: inset -8px 3px 12px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(0,0,0,0.6); } /* shadow of the frame on the recessed screen */
   .hero.arrived { touch-action: auto; } /* lets the page inside the panel scroll on touch screens */
   .back { position: absolute; left: 24px; top: 24px; display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 18px 0 14px; border-radius: 999px; border: 1px solid rgba(243,238,224,0.28); background: rgba(11,24,32,0.55); color: #F3EEE0; font: 500 14px/1 Inter, system-ui, sans-serif; cursor: pointer; opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s linear .2s, background-color .2s ease, border-color .2s ease; }
   .hero.arrived .back { opacity: 1; visibility: visible; transition: opacity .35s ease, background-color .2s ease, border-color .2s ease; }
@@ -42,7 +45,10 @@
 <div class="hero" id="hero">
   <canvas id="forest" aria-hidden="true"></canvas>
   <main>
-    <h1>Earth Jukebox</h1>
+    <div class="title">
+      <h1>Earth Jukebox</h1>
+      <p class="tagline">Nasa's views of our changing planet, turned into sound.</p>
+    </div>
     <!-- The button flies the camera to the panel in the clearing. The href is only used as a fallback when WebGL is unavailable. -->
     <a class="cta" href="index2.html">Check it out<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></a>
   </main>
@@ -66,7 +72,7 @@
   var opts = {
     treeCount: 4500,   // nearby trees that react to the cursor (the same number again is added as a static far backdrop); fewer = smoother on slow computers
     windStrength: 1,   // 0.2 - 2.5
-    volume: 0.5,       // 0 - 1
+    volume: 0.25,      // 0 - 1
     flightSeconds: 2.8, // how long the camera takes to fly to the panel
     fadeForReducedMotion: false // true = visitors whose system has animations turned off get a short fade instead of the flight
   };
@@ -134,18 +140,22 @@
     });
     const treeVerts = V.length / 10;
 
+    const SUNDIR = (() => { const v = [0.72, 0.62, -0.12], l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; })(); // direction toward the sun
+
     // ---------- the hidden clearing the camera flies to, with the panel lying in it ----------
     // far enough out that trees and haze hide it from the home view
     const CX = 0, CZ = -230;
     // half-size of the panel: same proportions as the window, so it frames well on any screen
     const asp0 = Math.max(0.5, Math.min(2.3, (canvas.clientWidth || 16) / (canvas.clientHeight || 9)));
     const PW = 24 * asp0 / Math.hypot(1, asp0), PH = 24 / Math.hypot(1, asp0);
-    const PTOP = 0.7, PBEZEL = 0.9; // slab thickness and the rim around the screen area
+    // the panel is a raised frame with a sloped outer edge and the screen set down inside it:
+    // PTOP = height of the frame, PBEZEL = frame width, PFACE = height of the recessed screen, PCHAMFER = width of the slope
+    const PTOP = 0.7, PBEZEL = 0.9, PFACE = 0.25, PCHAMFER = 0.5;
     // below 1 = inside the clearing, above 1 = outside
     const clearingValue = (x, z) => {
       const a = Math.atan2(z - CZ, x - CX);
       const edge = 1 + 0.05 * Math.sin(a * 3 + 0.6) + 0.03 * Math.sin(a * 7 + 2.0);
-      const ex = Math.abs(x - CX) / (PW + 3.5), ez = Math.abs(z - CZ) / (PH + 3.5);
+      const ex = Math.abs(x - CX) / (PW + 2.6), ez = Math.abs(z - CZ) / (PH + 2.6);
       return Math.pow(Math.pow(ex, 4) + Math.pow(ez, 4), 0.25) / edge;
     };
     const inClearing = (x, z, grow) => clearingValue(x, z) < grow;
@@ -415,6 +425,7 @@ void main(){
     const meadow = ['#67833a', '#6f8c40', '#5f7b36'].map(hex);
     const up = [0, 1, 0];
     const GS = 6;
+    const mix3 = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t];
     // area around the panel that gets small tiles, because the camera ends up close to it
     const FX = Math.ceil((PW + 12) / GS) * GS, FZ0 = Math.floor((CZ - PH - 12) / GS) * GS, FZ1 = Math.ceil((CZ + PH + 12) / GS) * GS;
     for (let gx = -300; gx < 300; gx += GS) {
@@ -452,13 +463,14 @@ void main(){
         const jx = rim ? 0 : (h2(i, j) - 0.5) * 0.7 * FS2, jz = rim ? 0 : (h2(j + 57, i + 13) - 0.5) * 0.7 * FS2;
         return [-FX + i * FS2 + jx, 0, FZ0 + j * FS2 + jz];
       };
-      const mix3 = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t];
       const mossA = hex('#2e4824'), mossB = hex('#3d5c2c'), meadA = hex('#5f7b36'), meadB = hex('#72903f');
       const tone = (x, z) => 0.5 + 0.5 * Math.sin(x * 0.31 + Math.sin(z * 0.23) * 1.7) * Math.cos(z * 0.27 - x * 0.11);
       const triC = (p, q, r, k) => {
         const x = (p[0] + q[0] + r[0]) / 3, z = (p[2] + q[2] + r[2]) / 3;
         const t = tone(x, z), m = 1 - sstep(0.88, 1.1, clearingValue(x, z));
-        const c = mix3(mix3(mossA, mossB, t), mix3(meadA, meadB, t), m), j = 0.955 + 0.09 * k;
+        // the ground darkens a little right next to the panel, which helps it sit on the grass
+        const near = Math.hypot(Math.max(CX - PW - x, 0, x - CX - PW), Math.max(CZ - PH - z, 0, z - CZ - PH));
+        const c = mix3(mix3(mossA, mossB, t), mix3(meadA, meadB, t), m), j = (0.955 + 0.09 * k) * (1 - 0.3 * (1 - sstep(0, 2.4, near)));
         const col = [c[0] * j, c[1] * j, c[2] * j];
         put(G, p, up, col, 0); put(G, q, up, col, 0); put(G, r, up, col, 0);
       };
@@ -470,18 +482,37 @@ void main(){
         }
       }
     }
-    // the panel: a thin dark slab lying flat in the clearing. The page content is an HTML element
-    // (#screen) that the script places exactly over the slab's screen area once the camera has arrived.
+    // the panel: a raised frame with sloped outer sides and the screen recessed inside it. Each face has
+    // its own direction, so the sun lights the sides differently and the panel reads as a solid object.
+    // The page content is an HTML element (#screen) placed exactly over the recessed screen on arrival.
     {
-      const body = hex('#232f36'), face = hex('#0d1418');
-      const x0 = CX - PW, x1 = CX + PW, z0 = CZ - PH, z1 = CZ + PH, y = PTOP, b = PBEZEL;
-      const quad = (p, q, r, s2, n, col) => { [p, q, r, p, r, s2].forEach((v) => put(G, v, n, col, 0)); };
-      quad([x0, y, z0], [x1, y, z0], [x1, y, z1], [x0, y, z1], up, body);
-      quad([x0 + b, y + 0.05, z0 + b], [x1 - b, y + 0.05, z0 + b], [x1 - b, y + 0.05, z1 - b], [x0 + b, y + 0.05, z1 - b], up, face);
-      quad([x0, 0, z1], [x1, 0, z1], [x1, y, z1], [x0, y, z1], [0, 0, 1], body);
-      quad([x0, 0, z0], [x1, 0, z0], [x1, y, z0], [x0, y, z0], [0, 0, -1], body);
-      quad([x0, 0, z0], [x0, 0, z1], [x0, y, z1], [x0, y, z0], [-1, 0, 0], body);
-      quad([x1, 0, z0], [x1, 0, z1], [x1, y, z1], [x1, y, z0], [1, 0, 0], body);
+      const body = hex('#56676f'), face = hex('#0d1418');
+      const x0 = CX - PW, x1 = CX + PW, z0 = CZ - PH, z1 = CZ + PH;
+      const c = PCHAMFER, b = PBEZEL, H = PTOP, F = PFACE;
+      const quad = (p, q, r, s2, n, col) => { const nn = nrm(n); [p, q, r, p, r, s2].forEach((v) => put(G, v, nn, col, 0)); };
+      // shadow the panel casts on the grass, away from the sun (a flat dark shape just above the ground)
+      const shade = mix3(hex('#5f7b36'), hex('#72903f'), 0.5).map((v) => v * 0.42);
+      const sx = -SUNDIR[0] / SUNDIR[1] * H, sz = -SUNDIR[2] / SUNDIR[1] * H;
+      quad([x0 + sx, 0.03, z0 + sz], [x1 + sx, 0.03, z0 + sz], [x1 + sx, 0.03, z1 + sz], [x0 + sx, 0.03, z1 + sz], up, shade);
+      quad([x0, 0.03, z0], [x0 + sx, 0.03, z0 + sz], [x0 + sx, 0.03, z1 + sz], [x0, 0.03, z1], up, shade);
+      quad([x0, 0.03, z1], [x1, 0.03, z1], [x1 + sx, 0.03, z1 + sz], [x0 + sx, 0.03, z1 + sz], up, shade);
+      // sloped outer sides
+      quad([x1, 0, z0], [x1, 0, z1], [x1 - c, H, z1 - c], [x1 - c, H, z0 + c], [H, c, 0], body);
+      quad([x0, 0, z0], [x0, 0, z1], [x0 + c, H, z1 - c], [x0 + c, H, z0 + c], [-H, c, 0], body);
+      quad([x0, 0, z0], [x1, 0, z0], [x1 - c, H, z0 + c], [x0 + c, H, z0 + c], [0, c, -H], body);
+      quad([x0, 0, z1], [x1, 0, z1], [x1 - c, H, z1 - c], [x0 + c, H, z1 - c], [0, c, H], body);
+      // flat top of the frame
+      quad([x0 + c, H, z0 + c], [x1 - c, H, z0 + c], [x1 - b, H, z0 + b], [x0 + b, H, z0 + b], up, body);
+      quad([x0 + c, H, z1 - c], [x1 - c, H, z1 - c], [x1 - b, H, z1 - b], [x0 + b, H, z1 - b], up, body);
+      quad([x0 + c, H, z0 + c], [x0 + b, H, z0 + b], [x0 + b, H, z1 - b], [x0 + c, H, z1 - c], up, body);
+      quad([x1 - c, H, z0 + c], [x1 - b, H, z0 + b], [x1 - b, H, z1 - b], [x1 - c, H, z1 - c], up, body);
+      // inner walls going down to the screen, each facing inward
+      quad([x0 + b, H, z0 + b], [x0 + b, H, z1 - b], [x0 + b, F, z1 - b], [x0 + b, F, z0 + b], [1, 0, 0], body);
+      quad([x1 - b, H, z0 + b], [x1 - b, H, z1 - b], [x1 - b, F, z1 - b], [x1 - b, F, z0 + b], [-1, 0, 0], body);
+      quad([x0 + b, H, z0 + b], [x1 - b, H, z0 + b], [x1 - b, F, z0 + b], [x0 + b, F, z0 + b], [0, 0, 1], body);
+      quad([x0 + b, H, z1 - b], [x1 - b, H, z1 - b], [x1 - b, F, z1 - b], [x0 + b, F, z1 - b], [0, 0, -1], body);
+      // the recessed screen
+      quad([x0 + b, F, z0 + b], [x1 - b, F, z0 + b], [x1 - b, F, z1 - b], [x0 + b, F, z1 - b], up, face);
     }
     const groundVerts = G.length / 10;
     const groundVao = gl.createVertexArray();
@@ -578,14 +609,14 @@ void main(){
 
     // ---------- state ----------
     const FOG = hex('#9dbcd3'), SKYTOP = hex('#2766a6');
-    const SUN = nrm([0.72, 0.62, -0.12]);
+    const SUN = SUNDIR;
     const SUNCOL = [0.88, 0.81, 0.68];
     let cw = 1, ch = 1, dpr = 1;
     const cam = { x: 0, y: 0 };
     // view: where the camera is heading (0 = home, 1 = above the panel); fly: where it is right now
     let view = 0, fly = 0, arrived = false, cutTimer = 0, lastRect = '';
     const FLIGHT = Math.max(0.5, opts.flightSeconds || 2.8);
-    const FILL = 0.68; // how much of the window the panel fills on arrival
+    const FILL = 0.75; // how much of the window the panel fills on arrival
     const screenEl = opts.screen || null;
     const s5 = (v) => { v = v < 0 ? 0 : v > 1 ? 1 : v; return v * v * v * (v * (v * 6 - 15) + 10); };
     const pointer = { nx: 0, ny: 0, speed: 0 };
@@ -668,7 +699,7 @@ void main(){
       const lift = s5((fly - 0.4) / 0.6);       // climb to the final height in the second half
       const dip = Math.sin(Math.PI * Math.min(1, fly / 0.8)); // skim down toward the treetops on the way
       const tanH = Math.tan(fov / 2);
-      const endH = PTOP + Math.max((PH - PBEZEL) / (FILL * tanH), (PW - PBEZEL) / (FILL * tanH * aspect));
+      const endH = PFACE + Math.max((PH - PBEZEL) / (FILL * tanH), (PW - PBEZEL) / (FILL * tanH * aspect));
       const par = 1 - go;                        // pointer parallax only at home, so the panel stays square-on
       const eye = [cam.x * 1.6 * par + CX * go, (30 - cam.y * 1.0) * (1 - lift) + endH * lift - 6 * dip * dip, 30 + (CZ - 30) * go];
       // the camera looks at the ground a fixed distance ahead; that distance shrinks to nothing
@@ -682,7 +713,7 @@ void main(){
 
       // place the HTML panel exactly over the slab once the camera has settled above it
       const there = view === 1 && fly === 1;
-      if (there && screenEl && project(VP, CX - PW + PBEZEL, PTOP, CZ - PH + PBEZEL, 0) && project(VP, CX + PW - PBEZEL, PTOP, CZ + PH - PBEZEL, 2)) {
+      if (there && screenEl && project(VP, CX - PW + PBEZEL, PFACE, CZ - PH + PBEZEL, 0) && project(VP, CX + PW - PBEZEL, PFACE, CZ + PH - PBEZEL, 2)) {
         const rect = scr[0].toFixed(1) + ',' + scr[1].toFixed(1) + ',' + scr[2].toFixed(1) + ',' + scr[3].toFixed(1);
         if (rect !== lastRect) {
           lastRect = rect;
@@ -761,7 +792,7 @@ void main(){
         const leaf = inten * 0.26 * audio.flick;
         audio.leafG.gain.setTargetAtTime(leaf, at, 0.09);
         audio.leafBP.frequency.setTargetAtTime(1300 + inten * 900, at, 0.25);
-        const sp = Math.max(Math.min(1, pointer.speed / 3000) * Math.min(1, inten * 3), flightAmt * 0.9);
+        const sp = Math.max(Math.min(1, pointer.speed / 3000) * Math.min(1, inten * 3), flightAmt * 0.45);
         audio.whooshG.gain.setTargetAtTime(sp * 0.18, at, 0.15);
         audio.whooshLP.frequency.setTargetAtTime(320 + sp * 500, at, 0.2);
         audio.bedG.gain.setTargetAtTime(0.02 + 0.012 * Math.sin(time * 0.65), at, 0.5);
@@ -867,10 +898,25 @@ void main(){
   var heroMain = hero.querySelector('main');
   var frame = document.getElementById('screen-frame');
   var frameLoaded = false;
+  // the tagline stays on one line and is sized to be about as wide as the title above it
+  var titleEl = hero.querySelector('h1'), tagline = hero.querySelector('.tagline');
+  var textWidth = function (el) { var r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().width; };
+  var fitTagline = function () {
+    tagline.style.whiteSpace = 'nowrap';
+    tagline.style.fontSize = '20px';
+    var size = 20 * textWidth(titleEl) * 0.97 / (textWidth(tagline) || 1);
+    if (size < 13) { tagline.style.whiteSpace = 'normal'; size = 15; } // very narrow screens: let it wrap instead of shrinking too far
+    tagline.style.fontSize = size.toFixed(2) + 'px';
+  };
+  fitTagline();
+  window.addEventListener('resize', fitTagline);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitTagline);
+
   var show = function (v, instant) {
     hero.classList.toggle('away', !!v);
     heroMain.inert = !!v;
-    if (v && !frameLoaded) { frame.src = frame.getAttribute('data-src'); frameLoaded = true; }
+    // the time stamp makes the browser fetch the latest copy of the page instead of a cached one
+    if (v && !frameLoaded) { frame.src = frame.getAttribute('data-src') + '?t=' + Date.now(); frameLoaded = true; }
     if (!v && frameLoaded) {
       // leaving the panel: stop anything that is playing. If the page can't be reached from here
       // (opened straight from disk), unload it instead; it is loaded again on the next visit.
@@ -898,11 +944,26 @@ void main(){
     if (location.hash === '#explore') show(1, true);
   }
   var btn = document.getElementById('sound');
-  btn.addEventListener('click', function () {
-    var on = btn.getAttribute('aria-pressed') !== 'true';
+  // The sound button is the master switch: it controls the forest sound and the player inside the panel.
+  var soundOn = false, soundTouched = false;
+  var eachMedia = function (fn) {
+    try { var d = frame.contentDocument; if (d) Array.prototype.forEach.call(d.querySelectorAll('video, audio'), fn); } catch (e) { /* page not reachable (opened from disk) */ }
+  };
+  var setSound = function (on) {
+    soundOn = on;
     btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     btn.querySelector('span').textContent = on ? 'Sound on' : 'Sound off';
     forest.setSound(on);
+    eachMedia(function (m) { m.muted = !on; });
+  };
+  btn.addEventListener('click', function () { soundTouched = true; setSound(!soundOn); });
+  frame.addEventListener('load', function () {
+    eachMedia(function (m) { m.muted = !soundOn; });
+    // Pressing play in the panel turns the sound on, unless the visitor has switched it off themselves.
+    try {
+      var d = frame.contentDocument;
+      if (d) d.addEventListener('play', function () { if (!soundOn && !soundTouched) setSound(true); }, true);
+    } catch (e) { /* page not reachable (opened from disk) */ }
   });
   document.querySelector('.cta').addEventListener('mouseenter', function () { forest.hoverSound(); });
 })();
