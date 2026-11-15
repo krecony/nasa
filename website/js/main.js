@@ -8,7 +8,6 @@ const $ = (id) => document.getElementById(id);
 const video = $('video');
 const captions = $('captions');
 const playButton = $('play');
-const announce = $('announce');
 const status = $('status');
 
 let tracks = [];
@@ -80,7 +79,7 @@ function selectTrack(id, autoplay) {
   }
   video.src = track.video;
   captions.src = track.captions;
-  // Keep cues available for screen-reader announcements without displaying subtitles.
+  // Start with subtitles hidden; users can enable them through the video controls.
   captions.track.mode = 'hidden';
   if (autoplay) video.play();
 }
@@ -113,7 +112,7 @@ async function playLocal(track, autoplay) {
   video.src = videoUrl;
   video.playbackRate = 1 / local.slow;
   captions.src = vttUrl;
-  captions.track.mode = 'showing';
+  captions.track.mode = 'hidden';
   if (autoplay) video.play();
 }
 
@@ -141,12 +140,6 @@ video.addEventListener('play', () => {
 video.addEventListener('pause', () => {
   playButton.textContent = 'Play';
   playButton.setAttribute('aria-pressed', 'false');
-});
-
-// Send each day's description to the live region so screen readers read it
-captions.addEventListener('cuechange', () => {
-  const cue = captions.track.activeCues?.[0];
-  if (cue && announce.checked && !video.paused) status.textContent = cue.text;
 });
 
 init();
