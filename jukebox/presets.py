@@ -1,4 +1,4 @@
-                             """Presets: everything that is specific to one visualization lives here.
+"""Presets: everything that is specific to one visualization lives here.
 
 The engine (video.py, palette.py, features.py, compose.py) is generic.
 To add a new visualization, copy the IMERG preset and change:
@@ -129,36 +129,42 @@ WindSpeed = {
     "id": "WindSpeed",
     "kind": "field",                  # a value everywhere on the map (see jukebox/field.py)
     "title": "Near-Surface Wind Speed (GEOS-FP)",
-    "source": "NASA GMAO GEOS-FP model, NASA Scientific Visualization Studio (SVS 5147)",
+    "source": "NASA GMAO GEOS-FP model, NASA Scientific Visualization Studio (SVS 5148)",
     "description": (
         "A flat map of the whole Earth showing how fast the wind blows 10 meters (about 30 feet) above the ground, "
-        "hour by hour, from NASA's GEOS-FP weather model. Colors run from pale lavender and purple for light winds,"
+        "hour by hour, from NASA's GEOS-FP weather model. Colors run from pale lavender and purple for light winds, "
         "through blue, cyan, yellow and orange, to red for strong winds (around 20 meters per second), "
-        "and dark red, brown and grey for hurricane-force winds (up to 40 meters per second, about 145 km/h).  "
-        "Winds are strongest over the oceans, where there is little to slow them down,"
+        "and dark red, brown and grey for hurricane-force winds (up to 40 meters per second, about 145 km/h). "
+        "Winds are strongest over the oceans, where there is little to slow them down, "
         "and swirling bands of color show weather fronts and storms moving around the globe."
     ),
-    "listening_guide": [],
+    "listening_guide": [
+        "Five breathy whistles, one per band of latitude. Windier = higher.",
+        "Wind chimes ring where the wind is stronger than 20 m/s (storms). Stronger = higher and louder; west = left, east = right.",
+        "The rushing wind gets louder as the whole planet gets windier.",
+        "A chord marks the start of every day.",
+    ],
 
     "start_time": "2026-10-30T09:00",   # 30 Oct 05:00 EDT on the first frame = 09:00 UTC
-    "hours_per_frame": 1.1667
+    "hours_per_frame": 1.1667,          # CHECK against your video's timestamps
     "slow_down": 1.5,
     "smooth_video": True,               # blend frames so the slowed video isn't choppy
 
     "map": {"lon_min": -180, "lon_max": 180, "lat_max": 90, "lat_min": -90},
 
-    # Official color bar image (from the SVS 5147 page) and what its two ends mean.
+    # Official color bar image (from the SVS 5148 page) and what its two ends mean.
     # The bar is found in the image automatically.
-    "colorbar": {"image": "colorbars/NearSurfaceWindSpeed_colorbar_plain.png", "min": -40, "max": 40},
-    "units": "C",
+    "colorbar": {"image": "colorbars/NearSurfaceWindSpeed_colorbar_plain.png", "min": 0, "max": 40},
+    "units": "m/s",
     "max_color_distance": 40,           # pixels further than this from any scale color are ignored
     "ignore": [
         (0, 0, 360, 80),                # NASA / GMAO logo
         (0, 920, 505, 1024),            # date/time stamp
     ],
-    "fast_threshold": 20,                # "hot" for the heat plucks
-    "slow_threshold": 10,                # freezing
-    "very_cold_threshold": 5,
+    # (the code uses these names for every "field" track)
+    "hot_threshold": 20,                # strong wind: wind chimes ring above this (m/s)
+    "cold_threshold": 5,                # calm: below this (m/s)
+    "very_cold_threshold": 3,
 
     "sounds": "sounds/WindSpeed.toml",
 }
