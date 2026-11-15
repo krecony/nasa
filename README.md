@@ -9,6 +9,10 @@ as you watch. Created for the NASA SpaceApps
 **[Create a track](https://krecony.github.io/nasa/studio/)** ·
 [Source code](https://github.com/krecony/nasa)
 
+<video src="media/demo.mp4" controls width="100%">
+  <a href="media/demo.mp4">Watch the demo</a>
+</video>
+
 ## What it does
 
 An interactive WebGL forest leads into a video jukebox with three published tracks:
