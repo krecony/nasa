@@ -80,7 +80,8 @@ function selectTrack(id, autoplay) {
   }
   video.src = track.video;
   captions.src = track.captions;
-  captions.track.mode = 'showing';
+  // Keep cues available for screen-reader announcements without displaying subtitles.
+  captions.track.mode = 'hidden';
   if (autoplay) video.play();
 }
 
