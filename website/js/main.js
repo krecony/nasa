@@ -81,7 +81,7 @@ function selectTrack(id, autoplay) {
   }
   video.src = track.video;
   captions.src = track.captions;
-  captions.track.mode = 'showing';
+  captions.track.mode = 'disabled';
   if (autoplay) video.play();
 }
 
@@ -113,7 +113,7 @@ async function playLocal(track, autoplay) {
   video.src = videoUrl;
   video.playbackRate = 1 / local.slow;
   captions.src = vttUrl;
-  captions.track.mode = 'showing';
+  captions.track.mode = 'disabled';
   if (autoplay) video.play();
 }
 
