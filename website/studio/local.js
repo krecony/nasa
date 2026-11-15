@@ -210,24 +210,28 @@ window.LocalStudio = (() => {
   /* ------------------------------------------------ builds */
 
   function startBuild(id, body) {
-    const job = { id: "web" + (++seq), step: "Getting ready…", log: [], done: false, ok: null, files: {} };
+    const job = { id: "web" + (++seq), step: "Getting ready…", progress: null, log: [], done: false, ok: null, files: {} };
     jobs.set(job.id, job);
     (async () => {
       try {
         const mode = body.mode === "publish" ? "publish" : "preview";
         const b = JSON.parse(await call("begin", [id, mode, JSON.stringify(body.only || [])]));
+        if ((body.only || []).length) job.log.push("Only these sounds: " + body.only.join(", ") + ".");
         if (b.need_frames) {
           const v = await videoFor(id);
           const [W, H] = b.work;
           const t0 = Date.now();
+          job.step = "Reading the video (it plays once, quietly, in the background)…";
+          job.progress = [0, b.frames];
           await captureFrames(v, b.fps, b.frames, W, H,
-            (i, rgba) => call("add_frame", [b.job, rgba, W, H], [rgba.buffer]),
-            (k) => { job.step = `Reading the video: frame ${k} of ${b.frames}`; });
+            (i, rgba) => call("add_frame", [b.job, rgba, W, H], [rgba.buffer]).then(() => { job.progress = [i + 1, b.frames]; }),
+            () => {});
           job.log.push(`Read ${b.frames} frames in ${((Date.now() - t0) / 1000).toFixed(0)} s.`);
         } else {
           job.log.push("Using the saved video analysis (the video and color settings didn't change).");
         }
         job.step = "Making the soundtrack…";
+        job.progress = null;
         const r = await call("finish", [b.job]);
         const d = JSON.parse(r.details);
         job.log.push(...d.log);

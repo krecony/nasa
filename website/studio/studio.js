@@ -9,11 +9,25 @@ const ID_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,40}$/;
 const OFFSETS = [[-10, "Hawaii"], [-8, "PST"], [-7, "PDT / MST"], [-6, "MDT / CST"], [-5, "CDT / EST"], [-4, "EDT"],
   [-3, ""], [0, "UTC / GMT"], [1, "CET / BST"], [2, "CEST / EET"], [3, "EEST / Moscow"], [5.5, "India"], [8, "China"], [9, "Japan"], [10, "AEST"]];
 const SOUND_KINDS = {
-  voices: "Voices: one held note per band of latitude; higher value = higher note",
-  hits: "Hits: short notes where the value is inside a range (more area = more notes)",
-  background: "Background: a sound that gets louder with the global average or with the area inside a range",
-  chime: "Chime: rings at the start of every day",
+  voices: { name: "Voices", short: "Held notes that follow the average value of five bands of latitude.",
+    long: "Five long, held notes: one for each band of latitude (Arctic, north, tropics, south, Antarctic), " +
+          "spread from left to right in your headphones. Each note follows its band's average value: " +
+          "a higher value means a higher note. Good for the big picture, like the tropics warming up." },
+  hits: { name: "Hits", short: "Short notes that play where the map is inside a range of values.",
+    long: "Short notes (plucks, bells or your own sample) that play where the map is inside the range you set, " +
+          "for example wind over 20 m/s. The more of the map is in that range, the more notes per second. " +
+          "Higher values play higher notes, and where it happens is where you hear it: west on the left, east on the right. " +
+          "Good for extremes like storms or heat waves." },
+  background: { name: "Background", short: "A continuous sound that gets louder and quieter with the data.",
+    long: "A continuous sound (noise, a low rumble or your own loop) whose loudness follows either how much of the map " +
+          "is inside the range you set, or the average of the whole map. Good for slow changes, like the frozen area growing." },
+  chime: { name: "Chime", short: "One note at the start of every day.",
+    long: "A single note (with its fifth) at the start of every day of the video, so listeners can count the days." },
 };
+const NON_NEGATIVE_LISTS = ["harmonics", "band_volumes", "bands"];      // pans can be negative (left)
+// sound settings: none can be negative, and some can't be 0 either (a decay of 0 = no sound at all)
+const SOUND_LIMITS = { decay: [0.05], units_per_step: [0.01], smoothing: [1], curve: [0.1], cutoff: [20], low: [20], high: [20],
+  per_second_max: [0.1], brightness: [0, 1], stereo_width: [0, 1], level_min: [0, 1], quiet: [0, 1], loud: [0, 1] };
 const MAIN_KEYS = ["name", "enabled", "volume", "instrument", "texture", "sample", "root", "measure", "hemisphere", "note"];
 const SELECTS = { measure: ["area", "mean"], hemisphere: ["all", "north", "south"], color_space: ["rgb", "lab"] };
 
@@ -79,11 +93,16 @@ function field(label, input, hint, cls) {
   return el("label", { class: "f " + (cls || "") }, label, input, hint ? el("span", { class: "hint" }, hint) : null);
 }
 function text(obj, key, attrs = {}) {
-  return el("input", { type: "text", value: obj[key] ?? "", ...attrs, oninput: (e) => { obj[key] = e.target.value; touch(); attrs.onchange2?.(); } });
+  return el("input", { type: "text", value: obj[key] ?? "", ...attrs, oninput: (e) => { obj[key] = e.target.value; touch(); unmark(e.target); attrs.onchange2?.(); } });
 }
+/* a label for a field that must be filled in */
+const req = (label) => [label, el("span", { class: "req", "aria-hidden": "true" }, " *")];
 function number(obj, key, attrs = {}, after) {
+  const min = attrs.min === undefined ? null : +attrs.min, max = attrs.max === undefined ? null : +attrs.max;
+  const clamp = (v) => (v === null ? v : min !== null && v < min ? min : max !== null && v > max ? max : v);
   return el("input", { type: "number", step: "any", value: fmt(obj[key]), ...attrs,
-    oninput: (e) => { obj[key] = num(e.target.value); touch(); after?.(); } });
+    oninput: (e) => { obj[key] = clamp(num(e.target.value)); touch(); unmark(e.target); after?.(); },
+    onchange: (e) => { if (obj[key] !== num(e.target.value)) e.target.value = fmt(obj[key]); } });
 }
 function check(obj, key, label, after) {
   const c = el("input", { type: "checkbox", onchange: (e) => { obj[key] = e.target.checked; touch(); after?.(); } });
@@ -109,8 +128,74 @@ function area(obj, key) {
   return t;
 }
 function numList(obj, key) {
+  const pos = NON_NEGATIVE_LISTS.includes(key);
   return el("input", { type: "text", value: (obj[key] || []).join(", "), inputmode: "decimal",
-    oninput: (e) => { obj[key] = e.target.value.split(/[,\s]+/).filter(Boolean).map(Number).filter((x) => !isNaN(x)); touch(); } });
+    oninput: (e) => { obj[key] = e.target.value.split(/[,\s]+/).filter(Boolean).map(Number).filter((x) => !isNaN(x) && (!pos || x >= 0)); touch(); } });
+}
+
+/* ---- required fields: marked in red when missing */
+function unmark(input) {
+  const box = input?.closest?.(".missing");
+  if (!box) return;
+  box.classList.remove("missing");
+  box.querySelector(".miss-msg")?.remove();
+  box.querySelectorAll("[aria-invalid]").forEach((x) => x.removeAttribute("aria-invalid"));
+}
+function markMissing(id, msg) {
+  const input = document.getElementById(id);
+  if (!input) return null;
+  const box = input.closest("label.f, .upload") || input;
+  box.classList.add("missing");
+  input.setAttribute("aria-invalid", "true");
+  if (!box.querySelector(".miss-msg")) {
+    const m = el("span", { class: "miss-msg", id: id + "-miss" }, msg);
+    box.append(m);
+    input.setAttribute("aria-describedby", m.id);
+  }
+  return input;
+}
+/* what's still missing; level "save" = needed to save, "build" = also needed to make the sound */
+function checkRequired(level) {
+  document.querySelectorAll(".missing").forEach((b) => { b.classList.remove("missing"); b.querySelector(".miss-msg")?.remove(); });
+  const t = T.track, cb = t.colorbar || {}, found = [];
+  const need = (ok, id, msg) => { if (!ok) { const i = markMissing(id, msg); found.push(i || msg); } };
+  need(ID_RE.test(T.id), "track-id", "Required: letters, numbers, - and _ only.");
+  need(String(t.title || "").trim(), "f-title", "Required.");
+  if (level === "build") {
+    need(T.hasVideo, "f-video", "Upload the video.");
+    need(T.hasColorbar, "f-colorbar", "Upload the color bar.");
+  }
+  need(num(cb.min) !== null, "f-cbmin", "Required: the number at this end of the color bar.");
+  need(num(cb.max) !== null && (num(cb.min) === null || num(cb.max) !== num(cb.min)), "f-cbmax", "Required, and different from the other end.");
+  need(t.start_time, "f-start", "Required: the date and time on the first frame.");
+  need(num(t.hours_per_frame) > 0, "hours", "Required, more than 0.");
+  need(num(t.hot_threshold) !== null, "f-hot", "Required.");
+  need(num(t.cold_threshold) !== null, "f-cold", "Required.");
+  need(num(t.very_cold_threshold) !== null, "f-vcold", "Required.");
+  if (found.length) {
+    const first = found.find((x) => x && x.focus);
+    first?.scrollIntoView({ behavior: "smooth", block: "center" });
+    first?.focus({ preventScroll: true });
+    status(`${found.length === 1 ? "One thing is" : found.length + " things are"} missing: marked in red.`, "bad");
+  }
+  return !found.length;
+}
+
+/* nice round defaults inside the color bar (e.g. thresholds, a new sound's range) */
+function niceValue(frac) {
+  const [lo, hi] = barLimits(), span = (hi - lo) || 1;
+  const step = Math.pow(10, Math.floor(Math.log10(span / 10)));
+  return Math.round((lo + frac * span) / step) * step;
+}
+function defaultThresholds() {
+  const t = T.track, cb = t.colorbar || {};
+  if (num(cb.min) === null || num(cb.max) === null) return;
+  const set = (key, id, frac) => {
+    if (t[key] !== null && t[key] !== undefined && t[key] !== "") return;
+    t[key] = niceValue(frac);
+    const i = document.getElementById(id); if (i) { i.value = fmt(t[key]); unmark(i); }
+  };
+  set("hot_threshold", "f-hot", 0.75); set("cold_threshold", "f-cold", 0.25); set("very_cold_threshold", "f-vcold", 0.1);
 }
 function slider(obj, key, min, max, step, label, hint) {
   const out = el("output", {}, fmt(obj[key]));
@@ -131,11 +216,43 @@ async function loadInfo() {
   }
 }
 
-function leaveOk() { return !dirty || confirm("You have unsaved changes. Leave them?"); }
+/* Unsaved changes: ask with our own dialog (the browser's own message can't be changed, and only
+   appears when closing or reloading the tab). Returns true when it's OK to go on. */
+function askLeave() {
+  return new Promise((resolve) => {
+    const name = T?.track?.title || T?.id || "this track";
+    const done = (v) => { d.close(); d.remove(); resolve(v); };
+    const d = el("dialog", { class: "leave", "aria-labelledby": "leave-h", oncancel: (e) => { e.preventDefault(); done("stay"); } },
+      el("h2", { id: "leave-h" }, "Save your changes first?"),
+      el("p", {}, `You changed “${name}” but haven't saved it yet. ` +
+        (inBrowser() ? "If you leave without saving, those changes are lost." : "If you leave without saving, the files in tracks/ keep the old settings.")),
+      el("div", { class: "row" },
+        el("button", { type: "button", class: "btn accent", onclick: () => done("save") }, "Save and continue"),
+        el("button", { type: "button", class: "btn ghost", onclick: () => done("discard") }, "Don't save"),
+        el("button", { type: "button", class: "btn ghost", onclick: () => done("stay") }, "Stay here")));
+    document.body.append(d);
+    d.showModal();
+  });
+}
+async function leaveOk() {
+  if (!dirty) return true;
+  const choice = await askLeave();
+  if (choice === "save") return save();
+  if (choice === "discard") { dirty = false; return true; }
+  return false;
+}
 window.addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
 
+/* "Back to the jukebox": straight to the player (the homepage's #explore), with this track picked */
+function jukeboxHref() {
+  if (!T || T.isNew) return "../#explore";
+  const id = inBrowser() ? "mine:" + T.id : T.id;
+  return `../?track=${encodeURIComponent(id)}#explore`;
+}
+function updateBackLink() { const a = $("#back-link"); if (a) a.href = jukeboxHref(); }
+
 async function openTrack(id) {
-  if (!leaveOk()) return;
+  if (!(await leaveOk())) return;
   try {
     const d = await api("track/" + encodeURIComponent(id));
     T = { id, isNew: false, editable: d.editable, track: d.track, kind: d.kind, video: null, cb: null,
@@ -147,11 +264,11 @@ async function openTrack(id) {
   } catch (e) { fail(e); }
 }
 
-function newTrack() {
-  if (!leaveOk()) return;
+async function newTrack() {
+  if (!(await leaveOk())) return;
   const d = INFO.track_defaults;
   T = { id: "", isNew: true, editable: true, kind: "field", video: null, cb: null, hasVideo: false, hasColorbar: false, samples: [],
-    track: { title: "", source: "", description: "", listening_guide: [], units: "", start_time: "", hours_per_frame: null,
+    track: { title: "", source: "", description: "", listening_guide: [], units: "", start_time: "", hours_per_frame: 1,
       slow_down: d.slow_down, smooth_video: false, ignore: [], color_space: "rgb", max_color_distance: d.max_color_distance,
       unmatched_value: null, hot_threshold: null, cold_threshold: null, very_cold_threshold: null,
       caption_high: d.caption_high, caption_low: d.caption_low, caption_share: "", caption_share_name: d.caption_share_name,
@@ -166,8 +283,11 @@ function newTrack() {
 function newSound(kind, name) {
   const s = JSON.parse(JSON.stringify(INFO.sound_defaults[kind]));
   s.kind = kind; s.name = name || kind;
-  if ("range" in s) s.range = [null, null];
-  if ("pitch_range" in s) s.pitch_range = [null, null];
+  const known = T && (T.cb || (num(T.track.colorbar?.min) !== null && num(T.track.colorbar?.max) !== null));
+  if ("range" in s) s.range = !known ? [null, null]                 // a sensible start: hits on the high values,
+    : kind === "hits" ? [niceValue(0.75), null]                     // background on the low ones
+    : kind === "background" ? [null, niceValue(0.25)] : [null, null];
+  if ("pitch_range" in s) s.pitch_range = [];                       // = same as the range
   return s;
 }
 
@@ -183,6 +303,7 @@ function render() {
   document.body.append(actionsBar());
   if (T.hasVideo) loadVideo();
   if (T.hasColorbar && T.track.colorbar?.min !== null && T.track.colorbar?.max !== null) readColorbar(true);
+  updateBackLink();
   main.focus();
 }
 
@@ -194,6 +315,7 @@ function renderReadOnly(main) {
     el("p", { class: "muted" }, T.hasVideo ? "Video found." : (T.videoProblem || "No video yet: put the NASA MP4 in tracks/" + T.id + "/."))), resultCard());
   $("#actions")?.remove();
   document.body.append(actionsBar());
+  updateBackLink();
   main.focus();
 }
 
@@ -206,8 +328,8 @@ function basicsCard() {
     el("h2", { id: "h-basics" }, "1. About the track"),
     el("p", { class: "muted" }, "Shown on the website and read out by screen readers."),
     el("div", { class: "grid" },
-      field("Folder name", idInput, T.isNew ? "Letters, numbers, - and _ only. Fixed once you upload a file." : `tracks/${T.id}/`),
-      field("Title", text(t, "title", { required: true, placeholder: "Sea Surface Temperature" })),
+      field(req("Folder name"), idInput, T.isNew ? "Letters, numbers, - and _ only. Fixed once you upload a file." : `tracks/${T.id}/`),
+      field(req("Title"), text(t, "title", { id: "f-title", required: true, placeholder: "Sea Surface Temperature" })),
       field("Source", text(t, "source", { placeholder: "NASA Scientific Visualization Studio (SVS 1234)" })),
       field("Units", text(t, "units", { placeholder: "°C, m/s, mm/h ..." })),
       field("Description", area(t, "description"), "What the video shows, in plain words: the colors and what they mean.", "wide"),
@@ -220,24 +342,25 @@ function videoCard() {
   const t = T.track;
   T.offset = T.offset ?? 0;
   T.startLocal = T.startLocal ?? (t.start_time || "").slice(0, 16);
-  const startIn = el("input", { type: "datetime-local", value: T.startLocal, oninput: (e) => { T.startLocal = e.target.value; updateStart(); } });
+  const startIn = el("input", { type: "datetime-local", id: "f-start", required: true, value: T.startLocal,
+    oninput: (e) => { T.startLocal = e.target.value; unmark(e.target); updateStart(); } });
   const offSel = el("select", { onchange: (e) => { T.offset = +e.target.value; updateStart(); } },
     OFFSETS.map(([o, n]) => el("option", { value: o, selected: o === T.offset }, `UTC${o >= 0 ? "+" : "−"}${Math.abs(o)} ${n}`)));
   const lastIn = el("input", { type: "datetime-local", value: T.lastLocal || "", oninput: (e) => { T.lastLocal = e.target.value; computeHours(); } });
-  const hours = number(t, "hours_per_frame", { id: "hours", min: 0 });
+  const hours = number(t, "hours_per_frame", { id: "hours", min: 0, required: true });
   return el("section", { class: "card", "aria-labelledby": "h-video" },
     el("h2", { id: "h-video" }, "2. The video"),
     el("div", { class: "row" },
-      el("label", { class: "btn file-btn" }, T.hasVideo ? "Replace the video…" : "Upload the video (MP4)…",
-        el("input", { type: "file", accept: "video/*,.mp4,.webm,.mov,.m4v", onchange: (e) => uploadFile("video", e.target.files[0]) })),
+      el("span", { class: "upload" }, el("label", { class: "btn file-btn" }, T.hasVideo ? "Replace the video…" : req("Upload the video (MP4)…"),
+        el("input", { type: "file", id: "f-video", accept: "video/*,.mp4,.webm,.mov,.m4v", onchange: (e) => uploadFile("video", e.target.files[0]) }))),
       el("span", { id: "video-info", class: "muted" }, T.hasVideo ? "Loading…" : (T.videoProblem || "No video yet."))),
     el("div", { id: "frame-area" }),
     el("h3", {}, "Time"),
     el("div", { class: "grid" },
-      field("First frame shows", startIn, "The date and time printed on the first frame."),
+      field(req("First frame shows"), startIn, "The date and time printed on the first frame."),
       field("That time is in", offSel, el("span", { id: "utc-out" }, utcText())),
       field("Last frame shows (optional)", lastIn, "Fill this in and the hours per frame are worked out for you."),
-      field("Hours per frame", hours, "How much time passes from one frame to the next."),
+      field(req("Hours per frame"), hours, "How much time passes from one frame to the next."),
       slider(t, "slow_down", 1, 4, 0.25, "Slow down", "1 = the video's own speed. 1.5 gives the sounds more room."),
       el("div", {}, check(t, "smooth_video", "Blend frames when slowed (smoother video)"))));
 }
@@ -326,8 +449,9 @@ async function setFrame(img) {
 function boxList() {
   const ul = el("ul", { class: "boxes", id: "boxes" });
   T.track.ignore.forEach((b, i) => {
-    const inputs = b.map((v, j) => el("input", { type: "number", value: v, style: "width:80px", "aria-label": ["left", "top", "right", "bottom"][j] + ` of box ${i + 1}`,
-      oninput: (e) => { b[j] = Math.round(+e.target.value || 0); touch(); drawBoxes(); } }));
+    const inputs = b.map((v, j) => el("input", { type: "number", min: 0, value: v, style: "width:80px", "aria-label": ["left", "top", "right", "bottom"][j] + ` of box ${i + 1}`,
+      oninput: (e) => { b[j] = Math.max(0, Math.round(+e.target.value || 0)); touch(); drawBoxes(); },
+      onchange: (e) => { e.target.value = b[j]; } }));
     ul.append(el("li", {}, el("span", { class: "row" }, `Box ${i + 1}:`, ...inputs,
       el("button", { type: "button", class: "btn ghost small", onclick: () => { T.track.ignore.splice(i, 1); touch(); refreshBoxes(); } }, "Remove"))));
   });
@@ -417,22 +541,23 @@ function colorsCard() {
     el("h2", { id: "h-colors" }, "3. What the colors mean"),
     el("p", { class: "muted" }, "Upload the color bar (crop it from the NASA page or the video), then say what its two ends mean."),
     el("div", { class: "row" },
-      el("label", { class: "btn file-btn" }, T.hasColorbar ? "Replace the color bar…" : "Upload the color bar (PNG/JPG)…",
-        el("input", { type: "file", accept: "image/*", onchange: (e) => uploadFile("colorbar", e.target.files[0]) })),
+      el("span", { class: "upload" }, el("label", { class: "btn file-btn" }, T.hasColorbar ? "Replace the color bar…" : req("Upload the color bar (PNG/JPG)…"),
+        el("input", { type: "file", id: "f-colorbar", accept: "image/*", onchange: (e) => uploadFile("colorbar", e.target.files[0]) }))),
       el("button", { type: "button", class: "btn ghost", onclick: () => readColorbar() }, "Read the color bar")),
     T.hasColorbar ? (() => { const img = el("img", { class: "cb-preview", alt: "The uploaded color bar" });
       setImg(img, `colorbar-image/${encodeURIComponent(T.id)}.png?t=${Date.now()}`); return img; })() : null,
     el("div", { id: "cb-gradient" }),
     el("div", { class: "grid" },
-      field("Value at the left/bottom end", number(cb, "min", {}, cbChanged), "The number printed at that end."),
-      field("Value at the right/top end", number(cb, "max", {}, cbChanged)),
-      field("Ignore the bar above", number(cb, "ignore_above", {}, cbChanged), "Optional: leave out the top of the bar (e.g. when it's the same grey as land)."),
-      field("Ignore the bar below", number(cb, "ignore_below", {}, cbChanged), "Optional."),
+      field(req("Value at the left/bottom end"), number(cb, "min", { id: "f-cbmin", required: true }, cbChanged), "The number printed at that end."),
+      field(req("Value at the right/top end"), number(cb, "max", { id: "f-cbmax", required: true }, cbChanged), "The number printed at that end."),
+      field("Don't use the bar above this value", number(cb, "ignore_above", {}, cbChanged),
+        "Optional. For the top of a bar whose colors also appear elsewhere on the map: on the wind bar, the strongest winds are the same grey as land, so it's cut off at 33."),
+      field("Don't use the bar below this value", number(cb, "ignore_below", {}, cbChanged), "Optional. The same, for the bottom of the bar."),
       field("Compare colors by", select(t, "color_space", [["rgb", "RGB (simple)"], ["lab", "How they look (Lab): for dark or similar colors"]], cbChanged)),
       field("How close a color must be", number(t, "max_color_distance", { min: 0 }, cbChanged), "RGB: about 40. Lab: about 12. Bigger = more pixels count."),
       field("Value for colors not on the bar", number(t, "unmatched_value"), "Empty = not used. E.g. when calm air is see-through and the bare map shows.")));
 }
-function cbChanged() { clearTimeout(cbChanged.t); cbChanged.t = setTimeout(() => readColorbar(true), 500); }
+function cbChanged() { defaultThresholds(); clearTimeout(cbChanged.t); cbChanged.t = setTimeout(() => readColorbar(true), 500); }
 
 async function readColorbar(quiet) {
   const box = $("#cb-gradient"); if (!box) return;
@@ -440,6 +565,7 @@ async function readColorbar(quiet) {
   if (cb.min === null || cb.max === null || cb.min === undefined || cb.max === undefined) { if (!quiet) status("Fill in the min and max values first.", "bad"); return; }
   try {
     T.cb = await post("colorbar/" + encodeURIComponent(T.id), colorSettings());
+    defaultThresholds();
     box.replaceChildren(gradientBar(), scaleRow(T.cb.min, T.cb.max),
       el("p", { class: "muted small" }, `Found the bar at x ${T.cb.box[0]}–${T.cb.box[2]}, y ${T.cb.box[1]}–${T.cb.box[3]} of the image. ` +
         "If the colors above don't match the image, crop the image closer to the bar."));
@@ -474,9 +600,9 @@ function captionsCard() {
     el("h2", { id: "h-captions" }, "4. Daily captions"),
     el("p", { class: "muted" }, "Every day of the video gets a short spoken caption (also shown on the website). These words fill it in."),
     el("div", { class: "grid" },
-      field("High value", number(t, "hot_threshold"), "Above this is 'high' (e.g. 30 °C, 20 m/s)."),
-      field("Low value", number(t, "cold_threshold"), "Below this counts toward the share below (e.g. 0 °C, 5 m/s)."),
-      field("Very low value", number(t, "very_cold_threshold"), "Even lower (e.g. −20 °C)."),
+      field(req("High value"), number(t, "hot_threshold", { id: "f-hot", required: true }), "Above this is 'high' (e.g. 30 °C, 20 m/s). Filled in from the color bar: change it if you like."),
+      field(req("Low value"), number(t, "cold_threshold", { id: "f-cold", required: true }), "Below this counts toward the share below (e.g. 0 °C, 5 m/s)."),
+      field(req("Very low value"), number(t, "very_cold_threshold", { id: "f-vcold", required: true }), "Even lower (e.g. −20 °C)."),
       field("Word for the highest place", text(t, "caption_high"), "“Hottest: 41 °C over the Sahara”"),
       field("Word for the lowest place", text(t, "caption_low"), "“Coldest outside Antarctica: ...”"),
       field("The low share is…", text(t, "caption_share"), "“…% of the Northern Hemisphere is below freezing”"),
@@ -500,10 +626,14 @@ function musicCard() {
 function soundsCard() {
   return el("section", { class: "card", "aria-labelledby": "h-sounds" },
     el("h2", { id: "h-sounds" }, "6. Sounds"),
-    el("p", { class: "muted" }, "Add as many as you like. Each one follows a range of values on the color bar."),
-    el("div", { class: "row" }, Object.keys(SOUND_KINDS).map((k) =>
-      el("button", { type: "button", class: "btn ghost small", title: SOUND_KINDS[k], onclick: () => {
-        T.sounds.sounds.push(newSound(k, uniqueName(k))); touch(); refreshSounds(); $("#sounds .sound:last-child input")?.focus(); } }, "+ " + k))),
+    el("p", { class: "muted" }, "Add as many as you like. There are four kinds:"),
+    el("div", { class: "kinds" }, Object.entries(SOUND_KINDS).map(([k, d]) =>
+      el("div", { class: "kind" },
+        el("h3", {}, d.name),
+        el("p", { class: "small" }, d.long),
+        el("button", { type: "button", class: "btn ghost small", onclick: () => {
+          T.sounds.sounds.push(newSound(k, uniqueName(k))); touch(); refreshSounds();
+          $("#sounds .sound:last-child input")?.focus(); } }, `+ Add ${d.name.toLowerCase()}`)))),
     el("div", { id: "sounds" }, soundCards()));
 }
 function uniqueName(base) { let n = base, i = 2; while (T.sounds.sounds.some((s) => s.name === n)) n = `${base} ${i++}`; return n; }
@@ -511,24 +641,26 @@ function refreshSounds() { $("#sounds").replaceChildren(...soundCards()); }
 function refreshRanges() { if ($("#sounds")) refreshSounds(); }
 
 function soundCards() {
-  T.solo = T.solo || new Set();
   return T.sounds.sounds.map((s, i) => soundCard(s, i));
 }
 
 function soundCard(s, i) {
   const list = T.sounds.sounds, defs = INFO.sound_defaults[s.kind] || {};
+  const kind = SOUND_KINDS[s.kind] || { name: s.kind, short: "" };
   const card = el("article", { class: "sound" + (s.enabled === false ? " off" : ""), "aria-label": `Sound ${i + 1}: ${s.name}` });
   const move = (d) => { const j = i + d; if (j < 0 || j >= list.length) return; [list[i], list[j]] = [list[j], list[i]]; touch(); refreshSounds(); };
-  const solo = el("input", { type: "checkbox", onchange: (e) => { e.target.checked ? T.solo.add(s.name) : T.solo.delete(s.name); } });
-  solo.checked = T.solo.has(s.name);
+  // "_preview" isn't saved: it only says whether "Preview the sound" plays this one
+  const inPreview = el("input", { type: "checkbox", onchange: (e) => { s._preview = e.target.checked; } });
+  inPreview.checked = s._preview !== false;
   card.append(el("div", { class: "sound-head" },
-    el("div", { class: "row" }, el("span", { class: "tag" }, s.kind), el("h3", {}, s.name || "(no name)")),
+    el("div", { class: "row" }, el("span", { class: "tag" }, kind.name), el("h3", {}, s.name || "(no name)")),
     el("div", { class: "row" },
-      el("label", { class: "check small", title: "Preview only the ticked sounds" }, solo, "In preview"),
+      el("label", { class: "check small", title: "Untick to leave this sound out when you press “Preview the sound”" },
+        inPreview, "Include in preview", el("span", { class: "skip" }, ` (${s.name})`)),
       el("button", { type: "button", class: "btn ghost small", onclick: () => move(-1), "aria-label": `Move ${s.name} up` }, "↑"),
       el("button", { type: "button", class: "btn ghost small", onclick: () => move(1), "aria-label": `Move ${s.name} down` }, "↓"),
-      el("button", { type: "button", class: "btn danger small", onclick: () => { list.splice(i, 1); T.solo.delete(s.name); touch(); refreshSounds(); } }, "Remove"))));
-  card.append(el("p", { class: "muted small" }, SOUND_KINDS[s.kind]));
+      el("button", { type: "button", class: "btn danger small", onclick: () => { list.splice(i, 1); touch(); refreshSounds(); } }, "Remove"))));
+  card.append(el("p", { class: "muted small" }, kind.short));
 
   const main = el("div", { class: "grid" });
   const more = el("div", { class: "grid" });
@@ -540,9 +672,8 @@ function soundCard(s, i) {
     target.append(soundField(s, key, defs[key], card));
   }
   card.append(main);
-  if ("range" in defs) card.append(rangeBox(s, "range", s.kind === "voices" ? "Notes follow these values" :
-    s.kind === "background" ? (s.measure === "mean" ? "Louder as the average goes from" : "Counts the area with values from") : "Plays where the value is from"));
-  if ("pitch_range" in defs) card.append(rangeBox(s, "pitch_range", "Pitch: lowest note at … highest at (empty = same as above)"));
+  if ("range" in defs) card.append(rangeBox(s, "range", card));
+  if ("pitch_range" in defs) card.append(rangeBox(s, "pitch_range", card));
   card.append(el("details", { class: "more" }, el("summary", {}, "More settings"), more));
   return card;
 }
@@ -558,7 +689,10 @@ function soundField(s, key, def, card) {
   if (key === "sample") return sampleField(s, card);
   if (SELECTS[key]) return field(label, select(s, key, SELECTS[key], () => { if (key === "measure") refreshSounds(); }));
   if (typeof def === "boolean") return el("div", {}, check(s, key, label));
-  if (typeof def === "number") return field(label, number(s, key), help);
+  if (typeof def === "number") {
+    const [min, max] = SOUND_LIMITS[key] || [0];
+    return field(label, number(s, key, { min, max }), help);
+  }
   if (Array.isArray(def)) return field(label, numList(s, key), help || "Numbers separated by commas.");
   return field(label, text(s, key), help);
 }
@@ -575,31 +709,97 @@ function sampleField(s, card) {
     el("label", { class: "btn ghost small file-btn", style: "margin-top:6px" }, "Upload a WAV…", up));
 }
 
-function rangeBox(s, key, title) {
+/* The range of values a sound follows: two knobs to drag on the color bar (or use the arrow keys),
+   plus number boxes. A knob at the very end of the bar = no limit on that side.
+   pitch_range: which values get the lowest and highest note; until it's moved it follows the range. */
+function rangeBox(s, key, card) {
   const [lo, hi] = barLimits();
-  const r = s[key] = (s[key] && s[key].length ? [...s[key], null].slice(0, 2) : [null, null]);
+  const span = (hi - lo) || 1, step = +(span / 200).toPrecision(2) || 0.1;
+  const u = T.track.units ? " " + T.track.units : "";
+  const isPitch = key === "pitch_range";
+  let r = s[key] && s[key].length ? [...s[key], null].slice(0, 2) : [null, null];
+  const follows = () => isPitch && r[0] === null && r[1] === null;
+  const base = () => (s.range && s.range.length ? [...s.range, null].slice(0, 2) : [null, null]);
+  const shown = (j) => { const src = follows() ? base() : r; return src[j] ?? (j ? hi : lo); };
+  const pct = (v) => Math.max(0, Math.min(100, (v - lo) / span * 100));
+  const title = isPitch ? "Pitch: the lowest note plays at…, the highest at…"
+    : s.kind === "voices" ? "Notes follow the values between"
+    : s.kind === "background" ? (s.measure === "mean" ? "Gets louder as the average goes from" : "Gets louder with the area of the map between")
+    : "Plays where the map is between";
+  const what = isPitch ? "pitch" : "values";
+
   const band = el("div", { class: "band" });
-  const place = () => {
-    const a = r[0] ?? lo, b = r[1] ?? hi, span = (hi - lo) || 1;
-    const L = Math.max(0, Math.min(100, (a - lo) / span * 100)), R = Math.max(0, Math.min(100, (b - lo) / span * 100));
-    band.style.left = L + "%"; band.style.width = Math.max(0.5, R - L) + "%";
-    band.style.display = r[0] === null && r[1] === null && key === "pitch_range" ? "none" : "";
-  };
-  const what = key === "range" ? "values" : "pitch";
-  const end = (j, name) => {
-    const step = ((hi - lo) / 200) || 0.1;
-    const numIn = el("input", { type: "number", step: "any", value: fmt(r[j]), "aria-label": `${s.name} ${what}: ${name}` });
-    const rng = el("input", { type: "range", min: lo, max: hi, step, value: r[j] ?? (j ? hi : lo), "aria-label": `${s.name} ${what}: ${name} (slider)`, disabled: r[j] === null });
-    const none = el("input", { type: "checkbox" }); none.checked = r[j] === null;
-    const set = (v) => { r[j] = v; touch(); place(); };
-    numIn.addEventListener("input", () => { const v = num(numIn.value); if (v !== null) { rng.value = v; none.checked = false; rng.disabled = false; } set(v); none.checked = v === null; });
-    rng.addEventListener("input", () => { numIn.value = fmt(+rng.value); set(+rng.value); });
-    none.addEventListener("change", () => { rng.disabled = none.checked; if (none.checked) { numIn.value = ""; set(null); } else { const v = +rng.value; numIn.value = fmt(v); set(v); } });
-    return el("div", { class: "range-row" }, el("span", {}, name), rng, numIn, el("label", { class: "check small" }, none, "no limit", el("span", { class: "skip" }, ` (${s.name} ${what}: ${name})`)));
-  };
-  place();
-  return el("div", { class: "range-box", role: "group", "aria-label": `${s.name}: ${title}` },
-    el("strong", { class: "small" }, title), gradientBar(band), scaleRow(lo, hi), end(0, "From"), end(1, "To"));
+  const knobs = [0, 1].map((j) => el("div", { class: "knob", role: "slider", tabindex: 0,
+    "aria-label": `${s.name}, ${what}: ${j ? "to" : "from"}`, "aria-valuemin": lo, "aria-valuemax": hi }));
+  const bar = el("div", { class: "dual", style: `background:${gradientCss()}` }, band, ...knobs);
+  const nums = [0, 1].map((j) => el("input", { type: "number", step: "any", style: "width:110px",
+    "aria-label": `${s.name}, ${what}: ${j ? "to" : "from"} (number)`, placeholder: j ? "top of the bar" : "bottom of the bar" }));
+  const summary = el("p", { class: "small muted range-says", "aria-live": "polite" });
+  const reset = isPitch ? el("button", { type: "button", class: "btn ghost small", onclick: () => { r = [null, null]; store(); } }, "Same as the range above") : null;
+
+  function store() {
+    s[key] = isPitch ? (follows() ? [] : [shown(0), shown(1)]) : [...r];
+    touch(); update();
+    if (!isPitch) card.querySelector(".range-box.pitch")?._update?.();
+  }
+  function setEnd(j, v) {
+    if (v === null) { if (!isPitch) { r[j] = null; store(); } return; }
+    v = Math.round(Math.max(lo, Math.min(hi, v)) / step) * step;
+    if (isPitch && follows()) r = [shown(0), shown(1)];
+    v = j === 0 ? Math.min(v, shown(1)) : Math.max(v, shown(0));
+    r[j] = !isPitch && (j === 0 ? v <= lo : v >= hi) ? null : +v.toFixed(6);
+    store();
+  }
+  function update() {
+    const a = shown(0), b = shown(1);
+    knobs.forEach((k, j) => {
+      const v = shown(j), open = !isPitch && r[j] === null;
+      k.style.left = pct(v) + "%";
+      k.setAttribute("aria-valuenow", v);
+      k.setAttribute("aria-valuetext", open ? (j ? "no upper limit (top of the bar)" : "no lower limit (bottom of the bar)") : fmt(v) + u);
+    });
+    band.style.left = pct(a) + "%"; band.style.width = Math.max(0.5, pct(b) - pct(a)) + "%";
+    nums.forEach((n, j) => { if (document.activeElement !== n) n.value = (!isPitch && r[j] === null) ? "" : fmt(shown(j)); });
+    const end = (j) => (!isPitch && r[j] === null ? (j ? "the top of the bar" : "the bottom of the bar") : fmt(shown(j)) + u);
+    summary.textContent = isPitch
+      ? (follows() ? "Same as the range above." : `Lowest note at ${fmt(a)}${u}, highest at ${fmt(b)}${u}.`)
+      : `From ${end(0)} to ${end(1)}.`;
+    if (reset) reset.hidden = follows();
+  }
+
+  const valueAt = (x) => { const b = bar.getBoundingClientRect(); return lo + (x - b.left) / b.width * span; };
+  let dragging = null;
+  bar.addEventListener("pointerdown", (e) => {
+    const v = valueAt(e.clientX);
+    dragging = knobs.indexOf(e.target);
+    if (dragging < 0) dragging = Math.abs(v - shown(0)) <= Math.abs(v - shown(1)) ? 0 : 1;   // clicked the bar: nearest knob
+    bar.setPointerCapture(e.pointerId);
+    knobs[dragging].focus();
+    setEnd(dragging, v);
+    e.preventDefault();
+  });
+  bar.addEventListener("pointermove", (e) => { if (dragging !== null) setEnd(dragging, valueAt(e.clientX)); });
+  bar.addEventListener("pointerup", () => { dragging = null; });
+  bar.addEventListener("pointercancel", () => { dragging = null; });
+  knobs.forEach((k, j) => k.addEventListener("keydown", (e) => {
+    const d = { ArrowRight: step, ArrowUp: step, ArrowLeft: -step, ArrowDown: -step, PageUp: step * 10, PageDown: -step * 10 }[e.key];
+    if (d !== undefined) setEnd(j, shown(j) + d);
+    else if (e.key === "Home") setEnd(j, lo);
+    else if (e.key === "End") setEnd(j, hi);
+    else return;
+    e.preventDefault();
+  }));
+  nums.forEach((n, j) => {
+    n.addEventListener("change", () => setEnd(j, num(n.value)));
+    n.addEventListener("blur", update);
+  });
+
+  const box = el("div", { class: "range-box" + (isPitch ? " pitch" : ""), role: "group", "aria-label": `${s.name}: ${title}` },
+    el("strong", { class: "small" }, title), bar, scaleRow(lo, hi),
+    el("div", { class: "row small" }, el("span", {}, "From"), nums[0], el("span", {}, "to"), nums[1], reset), summary);
+  box._update = update;
+  update();
+  return box;
 }
 
 /* ---------------------------------------------------------------- uploads, save, build */
@@ -628,12 +828,13 @@ function payload() {
 
 async function save() {
   if (!T.editable) return true;
-  if (!ID_RE.test(T.id)) { status("Fill in the folder name (letters, numbers, - and _).", "bad"); return false; }
+  if (!checkRequired("save")) return false;
   try {
     await post("track/" + encodeURIComponent(T.id), payload());
     const wasNew = T.isNew;
     T.isNew = false; dirty = false;
     if (wasNew) $("#actions")?.replaceWith(actionsBar());   // now it can be deleted
+    updateBackLink();
     await loadInfo();
     status(inBrowser() ? "Saved in this browser." : "Saved to tracks/" + T.id + "/.", "good");
     return true;
@@ -641,31 +842,47 @@ async function save() {
 }
 
 async function build(mode) {
+  if (T.editable && !checkRequired("build")) return;
   if (T.editable && !(await save())) return;
   if (!T.hasVideo) { status(T.videoProblem || "Upload the video first (section 2).", "bad"); return; }
+  // the preview plays only the sounds with "Include in preview" ticked (all of them = no filter)
+  let only = [];
+  if (mode === "preview" && T.editable) {
+    const picked = T.sounds.sounds.filter((x) => x._preview !== false).map((x) => x.name);
+    if (!picked.length) { status("Tick “Include in preview” on at least one sound.", "bad"); return; }
+    if (picked.length < T.sounds.sounds.length) only = picked;
+  }
   const out = $("#result"); out.hidden = false;
   const stepEl = el("p", { "aria-live": "polite" }, mode === "publish" ? "Publishing…" : "Making a preview…");
+  const bar = el("progress", { "aria-label": "Progress" });
+  const pctEl = el("span", { class: "small muted" });
   const log = el("pre", { class: "log" });
-  out.replaceChildren(el("h2", { id: "h-result", tabindex: "-1" }, mode === "publish" ? "Publishing" : "Preview"), stepEl, log);
+  out.replaceChildren(el("h2", { id: "h-result", tabindex: "-1" }, mode === "publish" ? "Publishing" : "Preview"),
+    stepEl, el("div", { class: "progress-row" }, bar, pctEl), log);
   out.scrollIntoView({ behavior: "smooth", block: "start" });
   document.querySelectorAll("#actions button").forEach((b) => (b.disabled = true));
   try {
-    const only = T.editable ? [...(T.solo || [])].filter((n) => T.sounds.sounds.some((s) => s.name === n)) : [];
     const { job } = await post("build/" + encodeURIComponent(T.id), { mode, only });
     let j;
     for (;;) {
-      await new Promise((r) => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 700));
       j = await api("job/" + job);
-      stepEl.textContent = j.step; log.textContent = j.log.join("\n"); log.scrollTop = log.scrollHeight;
+      if (stepEl.textContent !== j.step) stepEl.textContent = j.step;      // announced only when the step changes
+      if (j.progress && j.progress[1] > 0) {
+        bar.max = j.progress[1]; bar.value = Math.min(j.progress[0], j.progress[1]);
+        pctEl.textContent = `${Math.round(100 * bar.value / bar.max)}%` + (j.progress[1] !== 100 ? ` (${j.progress[0]} of ${j.progress[1]})` : "");
+      } else { bar.removeAttribute("value"); pctEl.textContent = ""; }   // no number for this step: moving bar
+      log.textContent = j.log.join("\n"); log.scrollTop = log.scrollHeight;
       if (j.done) break;
     }
+    bar.max = 1; bar.value = 1; pctEl.textContent = "";
     if (!j.ok) { stepEl.textContent = "It stopped with an error: see the last lines below."; stepEl.className = "error-text"; status("The build failed.", "bad"); return; }
     stepEl.textContent = mode !== "publish" ? "Preview ready (the jukebox wasn't changed)." :
       inBrowser() ? "Added to your jukebox. It's saved only in this browser: use Export to share it." : "Published: it's on the jukebox now.";
     if (j.log.length) log.textContent = j.log.join("\n");
     if (j.files.audio) out.append(el("audio", { controls: true, src: j.files.audio }));
     if (j.files.graph) out.append(el("img", { src: j.files.graph, alt: "Graph of the values the sounds follow, day by day" }));
-    if (mode === "publish") out.append(el("p", {}, el("a", { href: "../" }, "Open the jukebox →")));
+    if (mode === "publish") out.append(el("p", {}, el("a", { href: jukeboxHref() }, "Open it in the jukebox →")));
     status(mode === "publish" ? "Published." : "Preview ready.", "good");
   } catch (e) { fail(e); }
   finally { document.querySelectorAll("#actions button").forEach((b) => (b.disabled = false)); }
@@ -688,7 +905,7 @@ function actionsBar() {
   return el("div", { class: "actions", id: "actions" }, el("div", { class: "row" },
     T.editable ? el("button", { type: "button", class: "btn", onclick: save }, "Save") : null,
     el("button", { type: "button", class: "btn ghost", onclick: () => build("preview"),
-      title: "Builds the sound without changing the jukebox. Tick 'In preview' on sounds to hear only those." }, "Preview the sound"),
+      title: "Makes the sound without changing the jukebox. Only sounds with “Include in preview” ticked are played." }, "Preview the sound"),
     el("button", { type: "button", class: "btn accent", onclick: () => build("publish") }, inBrowser() ? "Add to my jukebox" : "Publish to the jukebox"),
     el("span", { class: "spacer" }),
     el("button", { type: "button", class: "btn ghost small", onclick: () => exportZip(false) }, "Export (zip)"),
@@ -747,6 +964,11 @@ function browserTexts() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   $("#new-track").addEventListener("click", newTrack);
+  $("#back-link").addEventListener("click", async (e) => {
+    if (!dirty) return;
+    e.preventDefault();
+    if (await leaveOk()) location.href = jukeboxHref();
+  });
   $("#import-file").addEventListener("change", (e) => { importZip(e.target.files[0]); e.target.value = ""; });
   MODE = await detectMode();
   if (inBrowser()) {

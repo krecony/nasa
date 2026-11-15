@@ -179,11 +179,15 @@ adding and editing tracks without touching any files:
    zone; it's converted to UTC), and drag boxes over logos and date stamps to ignore them.
 3. Upload the color bar and type the values at its two ends. Switch to "Check what a color
    reads as" and move the mouse over the video to test it, or show the value map.
-4. Add sounds; for each one, set the range of values it follows with the sliders on the
-   color bar.
-5. **Preview the sound** builds just the soundtrack (tick "In preview" on sounds to hear
-   only those); the website isn't changed. **Publish to the jukebox** builds everything and
-   adds the track to the site.
+4. Add sounds (voices, hits, background, chime: the page explains each one); for each one,
+   drag the two knobs on the color bar to set the range of values it follows. A knob at the
+   end of the bar means "no limit" on that side.
+5. **Preview the sound** builds just the soundtrack, with the sounds that have "Include in
+   preview" ticked (all of them at first); the website isn't changed. **Publish to the
+   jukebox** builds everything and adds the track to the site. A progress bar shows how far it is.
+
+Required fields have a *. Anything missing is marked in red when you save. **Back to the
+jukebox** opens the player straight away (the homepage's `#explore`), with this track picked.
 
 **Save** writes `tracks/<name>/track.toml` and `sounds.toml`, the same files you can edit by
 hand (saving rewrites them in a standard layout, so hand-written comments are replaced).

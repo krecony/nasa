@@ -50,6 +50,7 @@ from jukebox.synth import SAMPLE_RATE
 from jukebox.timeline import build_timeline
 
 ROOT = Path(__file__).resolve().parent
+PROGRESS = 0          # with --progress (the studio): print progress every this many frames, and the video's %
 
 
 def analysis_key(preset, video):
@@ -75,9 +76,9 @@ def analyze(preset, video, out, force):
             pass
     print("1/5 Reading frames and extracting features (about 20 s)...")
     if preset.get("kind") == "field":
-        fx, feats = extract_field(preset, video, ROOT)
+        fx, feats = extract_field(preset, video, ROOT, progress=PROGRESS or True)
     else:
-        fx, feats = extract(preset, video)
+        fx, feats = extract(preset, video, progress=PROGRESS or True)
     cache.write_bytes(pickle.dumps({"key": key, "info": fx.info, "layers": fx.layers, "feats": feats}))
     return fx.info, fx.layers, feats
 
@@ -96,8 +97,29 @@ def make_video(video, wav, out, slow, tail, smooth=False):
         "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
         str(out),
     ]
-    subprocess.run(cmd, check=True)
+    if not PROGRESS:
+        subprocess.run(cmd, check=True)
+        return True
+    # for the studio's progress bar: ffmpeg reports how far it got; print it as "  video 37%"
+    total = video_seconds(video) * slow + tail          # length of the finished video
+    cmd[1:1] = ["-progress", "pipe:1", "-nostats"]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
+    last = -1
+    for line in proc.stdout:
+        if line.startswith("out_time_us=") and line.strip().split("=")[1].isdigit() and total > 0:
+            pct = min(100, int(int(line.strip().split("=")[1]) / 1e6 / total * 100))
+            if pct >= last + 2:
+                print(f"  video {pct}%", flush=True)
+                last = pct
+    if proc.wait() != 0:
+        raise subprocess.CalledProcessError(proc.returncode, cmd)
     return True
+
+
+def video_seconds(video):
+    from jukebox.video import video_info
+    info = video_info(video)
+    return info["frames"] / info["fps"] if info["fps"] else 0
 
 
 def update_tracks(preset, has_video):
@@ -209,9 +231,12 @@ def main():
     ap.add_argument("--stems", action="store_true", help="also save every layer as its own WAV")
     ap.add_argument("--no-video", action="store_true", help="don't build the website video")
     ap.add_argument("--no-publish", action="store_true", help="preview only: don't touch the website at all")
+    ap.add_argument("--progress", action="store_true", help=argparse.SUPPRESS)   # finer progress lines, for the studio
     ap.add_argument("--reanalyze", action="store_true", help="ignore the cached video analysis")
     ap.add_argument("--seed", type=int, default=0, help="random seed for drop timing")
     args = ap.parse_args()
+    global PROGRESS
+    PROGRESS = 5 if args.progress else 0
 
     names = list(args.tracks)
     legacy_video = None

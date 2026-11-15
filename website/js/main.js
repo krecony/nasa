@@ -8,6 +8,7 @@ const $ = (id) => document.getElementById(id);
 const video = $('video');
 const captions = $('captions');
 const playButton = $('play');
+const announce = $('announce');
 const status = $('status');
 
 let tracks = [];
@@ -32,6 +33,7 @@ async function init() {
     const mine = (await Mine.listTracks()).map((t) => ({ ...t, id: `mine:${t.id}`, mineId: t.id, local: true }));
     tracks = tracks.concat(mine);
     mine.forEach(addButton);
+    if (mine.some((t) => t.id === fromUrl)) selectTrack(fromUrl, false);   // e.g. "Open it in the jukebox" from the studio
   } catch { /* this browser can't store anything: just our tracks */ }
 }
 
@@ -79,8 +81,7 @@ function selectTrack(id, autoplay) {
   }
   video.src = track.video;
   captions.src = track.captions;
-  // Start with subtitles hidden; users can enable them through the video controls.
-  captions.track.mode = 'hidden';
+  captions.track.mode = 'showing';
   if (autoplay) video.play();
 }
 
@@ -112,7 +113,7 @@ async function playLocal(track, autoplay) {
   video.src = videoUrl;
   video.playbackRate = 1 / local.slow;
   captions.src = vttUrl;
-  captions.track.mode = 'hidden';
+  captions.track.mode = 'showing';
   if (autoplay) video.play();
 }
 
@@ -140,6 +141,12 @@ video.addEventListener('play', () => {
 video.addEventListener('pause', () => {
   playButton.textContent = 'Play';
   playButton.setAttribute('aria-pressed', 'false');
+});
+
+// Send each day's description to the live region so screen readers read it
+captions.addEventListener('cuechange', () => {
+  const cue = captions.track.activeCues?.[0];
+  if (cue && announce.checked && !video.paused) status.textContent = cue.text;
 });
 
 init();

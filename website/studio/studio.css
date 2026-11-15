@@ -97,3 +97,38 @@ details.more .grid { margin-top: 10px; }
   box-shadow: inset 0 0 0 1px var(--line), 0 10px 30px rgba(0,0,0,.5); border-left: 4px solid var(--accent); z-index: 8; }
 .toast:empty { display: none; } .toast.bad { border-left-color: var(--bad); } .toast.good { border-left-color: var(--good); }
 .error-text { color: var(--bad); }
+
+/* required fields; missing ones are marked in red */
+.req { color: var(--accent); }
+.missing input, .missing select, .missing textarea, input.missing { border-color: var(--bad) !important; box-shadow: 0 0 0 2px rgba(255,143,122,.35); }
+.upload.missing .file-btn { box-shadow: 0 0 0 2px var(--bad); }
+.upload { display: inline-flex; flex-direction: column; gap: 4px; }
+.miss-msg { color: var(--bad); font-size: 12px; font-weight: 600; }
+
+/* the four kinds of sound */
+.kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin: 8px 0 6px; }
+.kind { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; background: rgba(0,0,0,.18); display: flex; flex-direction: column; gap: 6px; }
+.kind h3 { margin: 0; }
+.kind p { margin: 0; color: var(--muted); flex: 1; }
+.kind .btn { align-self: flex-start; }
+
+/* range: two knobs on the color bar */
+.dual { position: relative; height: 26px; border-radius: 8px; margin: 12px 9px 2px; box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; touch-action: none; }
+.dual .band { position: absolute; top: -4px; bottom: -4px; border: 2px solid #fff; border-radius: 6px; box-shadow: 0 0 0 2px rgba(0,0,0,.6); pointer-events: none; }
+.dual .knob { position: absolute; top: 50%; width: 22px; height: 34px; margin: -17px 0 0 -11px; border-radius: 8px; background: var(--text);
+  border: 2px solid var(--ink); box-shadow: 0 2px 8px rgba(0,0,0,.6); cursor: grab; touch-action: none; }
+.dual .knob:active { cursor: grabbing; }
+.dual .knob:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.range-box .scale { margin: 0 9px; }
+.range-box .row { margin-top: 8px; }
+.range-says { margin: 6px 0 0; }
+
+/* "save your changes?" */
+dialog.leave { max-width: 460px; border: 0; border-radius: 18px; padding: 22px; color: var(--text); background: #0b1f19;
+  box-shadow: inset 0 0 0 1px var(--line), 0 30px 80px rgba(0,0,0,.6); }
+dialog.leave::backdrop { background: rgba(0,0,0,.6); }
+dialog.leave p { color: var(--muted); }
+
+/* build progress */
+.progress-row { display: flex; align-items: center; gap: 12px; }
+.progress-row progress { flex: 1; height: 14px; accent-color: var(--accent); }

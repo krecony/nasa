@@ -156,7 +156,7 @@ def extract(preset, video_path, progress=True):
     feats = []
     for i, frame in read_frames(video_path):
         feats.append(fx.frame_features(frame))
-        if progress and i % 50 == 0:
+        if progress and i % (50 if progress is True else int(progress)) == 0:
             print(f"  frame {i}/{fx.info['frames']}", flush=True)
     return fx, feats
 

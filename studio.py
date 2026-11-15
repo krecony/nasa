@@ -43,14 +43,14 @@ class ServerHooks(core.FileHooks):
 
     def build(self, tid, body):
         mode = body.get("mode", "preview")
-        cmd = [sys.executable, "-u", str(ROOT / "sonify.py"), tid]
+        cmd = [sys.executable, "-u", str(ROOT / "sonify.py"), tid, "--progress"]
         if mode == "preview":
             cmd += ["--no-publish"]
             only = [n for n in body.get("only") or [] if n]
             if only:
                 cmd += ["--only", ",".join(only)]
         job = {"id": uuid.uuid4().hex[:10], "track": tid, "mode": mode, "log": [], "done": False, "ok": None,
-               "step": "Starting...", "started": time.time()}
+               "step": "Starting...", "progress": None, "started": time.time()}
         with self.lock:
             self.jobs[job["id"]] = job
 
@@ -61,11 +61,19 @@ class ServerHooks(core.FileHooks):
                                         env={**os.environ, "PYTHONIOENCODING": "utf-8"})
                 for line in proc.stdout:
                     line = line.rstrip()
-                    if not line or line.strip().startswith("frame "):
+                    m = re.match(r"\s*frame (\d+)/(\d+)", line)        # progress for the bar, not for the log
+                    if m:
+                        job["progress"] = [int(m[1]), int(m[2])]
+                        continue
+                    m = re.match(r"\s*video (\d+)%", line)
+                    if m:
+                        job["progress"] = [int(m[1]), 100]
+                        continue
+                    if not line:
                         continue
                     job["log"].append(line)
                     if re.match(r"^\d/5 ", line):
-                        job["step"] = line
+                        job["step"], job["progress"] = line, None
                 job["ok"] = proc.wait() == 0
             except Exception as e:
                 job["log"].append(f"Error: {e}")
