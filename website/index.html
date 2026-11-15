@@ -11,7 +11,10 @@
   html, body { margin: 0; height: 100%; background: #5b8fbd; }
   .hero { position: relative; width: 100%; height: 100vh; height: 100svh; min-height: 560px; overflow: hidden; background: #5b8fbd; touch-action: none; font-family: Inter, system-ui, sans-serif; }
   .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-  .hero main { position: relative; height: 100%; box-sizing: border-box; padding: 0 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 44px; text-align: center; }
+  .app { position: absolute; inset: 0; }
+  .intro { position: relative; height: 100%; box-sizing: border-box; padding: 0 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 44px; text-align: center; }
+  .hero h1 .word { display: inline-block; white-space: nowrap; }
+  .hero h1 .ch { display: inline-block; will-change: transform, opacity; }
   .hero h1 { margin: 0; max-width: 12ch; font-family: 'Bricolage Grotesque', Inter, sans-serif; font-weight: 800; font-size: clamp(3.5rem, 10.5vw, 10.5rem); line-height: 0.9; letter-spacing: -0.04em; color: #F3EEE0; text-shadow: 0 2px 6px rgba(10,30,20,0.35), 0 8px 48px rgba(10,30,20,0.6); }
   .cta { display: inline-flex; align-items: center; gap: 12px; height: 60px; padding: 0 30px 0 34px; border: 0; border-radius: 999px; background: #F3EEE0; color: #10201F; font: 600 18px/1 Inter, system-ui, sans-serif; letter-spacing: -0.01em; text-decoration: none; cursor: pointer; box-shadow: 0 10px 30px rgba(4,12,16,0.35); transition: background-color .2s ease, transform .2s ease, box-shadow .2s ease; }
   .cta:hover { background: #fff; transform: translateY(-2px); box-shadow: 0 14px 36px rgba(4,12,16,0.45); }
@@ -24,15 +27,112 @@
   .snd[aria-pressed="true"] .on { display: inline; }
   .snd[aria-pressed="true"] .off { display: none; }
   .cta:focus-visible, .snd:focus-visible { outline: 3px solid #F2B872; outline-offset: 4px; }
+  .snd { z-index: 3; }
+
+  /* ---------- the jukebox, lying in clearings in the forest ---------- */
+  .stage { position: absolute; inset: 0; pointer-events: none; }
+  /* invisible layout: where each clearing ends up on screen in the bird's-eye view */
+  .layout { position: absolute; inset: 0; box-sizing: border-box; display: grid; visibility: hidden;
+    grid-template-columns: minmax(170px, 15%) minmax(0, 1fr) minmax(220px, 24%);
+    grid-template-areas: "tracks player info";
+    gap: clamp(24px, 3.4vw, 60px);
+    padding: clamp(24px, 5vh, 56px) clamp(24px, 3.4vw, 60px) clamp(80px, 10vh, 96px); }
+  .slot-tracks { grid-area: tracks; } .slot-player { grid-area: player; } .slot-info { grid-area: info; }
+  @media (max-width: 860px), (max-aspect-ratio: 1/1) {
+    .layout { grid-template-columns: 1fr; grid-template-rows: minmax(0, 50fr) minmax(0, 18fr) minmax(0, 32fr);
+      grid-template-areas: "player" "tracks" "info"; gap: 18px; padding: 18px 18px 80px; }
+  }
+  .panel { position: absolute; left: 0; top: 0; box-sizing: border-box; transform-origin: 0 0;
+    opacity: 0; visibility: hidden; overflow: auto; overscroll-behavior: contain; touch-action: pan-y;
+    pointer-events: auto; padding: clamp(14px, 1.5vw, 22px); border-radius: 22px;
+    background: rgba(8, 22, 19, 0.88); color: #F3EEE0; font: 500 15px/1.5 Inter, system-ui, sans-serif;
+    box-shadow: inset 0 0 0 1px rgba(243,238,224,0.10), inset 0 12px 34px rgba(0,0,0,0.6),
+                0 0 0 7px rgba(52, 80, 38, 0.35), 0 26px 60px rgba(0,0,0,0.45);
+    scrollbar-color: rgba(243,238,224,0.3) transparent; will-change: transform, opacity; }
+  .panel h2, .panel h3 { font-family: 'Bricolage Grotesque', Inter, sans-serif; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 6px; }
+  .panel h2 { font-size: clamp(1.25rem, 1.7vw, 1.7rem); line-height: 1.1; }
+  .panel h3 { font-size: 1.05rem; margin-top: 14px; }
+  .panel p, .panel ul { margin: 0 0 8px; }
+  .panel :focus-visible { outline: 3px solid #F2B872; outline-offset: 3px; border-radius: 6px; }
+  .panel-player { display: flex; flex-direction: column; gap: 10px; }
+  .player-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .player-head .source { color: rgba(243,238,224,0.7); font-size: 13px; margin: 0; }
+  .panel-player video { flex: 1 1 auto; min-height: 0; width: 100%; object-fit: contain; background: #000; border-radius: 12px; }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+  .btn { font: 600 14px/1 Inter, system-ui, sans-serif; height: 40px; padding: 0 18px; border-radius: 999px; border: 0; cursor: pointer;
+    background: #F3EEE0; color: #10201F; }
+  .btn:hover { background: #fff; }
+  .btn-ghost { background: transparent; color: #F3EEE0; border: 1px solid rgba(243,238,224,0.35); white-space: nowrap; }
+  .btn-ghost:hover { background: rgba(243,238,224,0.1); }
+  .toggle { color: rgba(243,238,224,0.8); font-size: 13px; display: inline-flex; gap: 8px; align-items: center; }
+  .status { margin: 0; padding: 8px 12px; border-left: 3px solid #F2B872; background: rgba(243,238,224,0.06); border-radius: 4px; font-size: 14px; }
+  .status:empty { display: none; }
+  #track-list { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 8px; }
+  #track-list button { width: 100%; text-align: left; font: 600 14px/1.3 Inter, system-ui, sans-serif; padding: 10px 14px; border-radius: 14px;
+    border: 1px solid rgba(243,238,224,0.25); background: rgba(243,238,224,0.06); color: #F3EEE0; cursor: pointer; }
+  #track-list button:hover { background: rgba(243,238,224,0.14); }
+  #track-list button[aria-pressed="true"] { background: #F2B872; border-color: #F2B872; color: #10201F; }
+  @media (max-width: 860px), (max-aspect-ratio: 1/1) {
+    #track-list { flex-direction: row; flex-wrap: wrap; } #track-list button { width: auto; }
+  }
+  .panel-info ul { padding-left: 18px; } .panel-info li + li { margin-top: 4px; }
+  .panel-info details { margin-top: 12px; } .panel-info summary { cursor: pointer; font-weight: 600; }
+  .panel-info img { max-width: 100%; background: #fff; border-radius: 6px; margin-top: 8px; }
 </style>
 </head>
 <body>
 <div class="hero" id="hero">
   <canvas id="forest" aria-hidden="true"></canvas>
-  <main>
-    <h1>Earth Jukebox</h1>
-    <!-- Change href to the page the button should open -->
-    <a class="cta" href="index2.html">Check it out<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></a>
+  <main class="app">
+    <div class="intro" id="intro">
+      <h1 id="title">Earth Jukebox</h1>
+      <!-- Without WebGL (or JavaScript) this simply opens the jukebox page -->
+      <a class="cta" href="index2.html">Check it out<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></a>
+    </div>
+
+    <!-- The jukebox: each panel lies in a clearing in the forest (see "clearings" in the script) -->
+    <section class="stage" id="stage" aria-label="Earth Jukebox player" inert>
+      <div class="layout" aria-hidden="true">
+        <div class="slot-tracks" data-panel="tracks"></div>
+        <div class="slot-player" data-panel="player"></div>
+        <div class="slot-info" data-panel="info"></div>
+      </div>
+
+      <nav class="panel panel-tracks" id="panel-tracks" aria-labelledby="tracks-heading">
+        <h2 id="tracks-heading">Tracks</h2>
+        <ul id="track-list"></ul>
+      </nav>
+
+      <section class="panel panel-player" id="panel-player" aria-labelledby="track-title">
+        <div class="player-head">
+          <div>
+            <h2 id="track-title" tabindex="-1">Loading…</h2>
+            <p id="track-source" class="source"></p>
+          </div>
+          <button type="button" class="btn btn-ghost" id="back">Back to the forest</button>
+        </div>
+        <video id="video" controls loop playsinline preload="metadata" aria-describedby="description">
+          <track id="captions" kind="captions" srclang="en" label="What you're hearing" default>
+        </video>
+        <div class="controls">
+          <button type="button" class="btn" id="play" aria-pressed="false">Play</button>
+          <label class="toggle"><input type="checkbox" id="announce" checked> Read the daily descriptions to screen readers</label>
+        </div>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="panel panel-info" id="panel-info" aria-label="About this track">
+        <h3>What the picture shows</h3>
+        <p id="description"></p>
+        <h3>How to listen</h3>
+        <ul id="guide"></ul>
+        <details>
+          <summary>How the sound is made</summary>
+          <p>A Python script reads every frame of the video, turns the colors back into numbers with the map's own color bar, and turns those numbers into music.</p>
+          <img id="features-image" alt="Graphs of the numbers extracted from the video over time.">
+        </details>
+      </section>
+    </section>
   </main>
   <button type="button" class="snd" id="sound" aria-pressed="false">
     <svg class="on" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
@@ -47,12 +147,14 @@
   var opts = {
     treeCount: 4500,   // fewer = smoother on slow computers
     windStrength: 1,   // 0.2 - 2.5
-    volume: 0.5        // 0 - 1
+    volume: 0.5,       // 0 - 1
+    transition: 2.6,   // seconds for the camera to swing up to the bird's-eye view
+    topHeight: 78      // how high the bird's-eye camera flies (higher = smaller-looking trees)
   };
 
   function startForest(canvas, opts) {
     const gl = canvas.getContext('webgl2', { antialias: true, alpha: false, powerPreference: 'high-performance' });
-    if (!gl) return { stop() {}, setSound() {}, hoverSound() {} };
+    if (!gl) return { supported: false, stop() {}, setSound() {}, hoverSound() {}, setLayout() {}, go() {}, duck() {}, gust() {} };
     const root = canvas.parentElement || canvas;
     const reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
@@ -168,7 +270,7 @@
     }
     const NT = trees.length;
     // trees further away sound quieter
-    trees.forEach((t) => { t.bx = t.lx; t.bz = t.lz; t.near = Math.pow(Math.max(0.04, 1 - (30 - t.z - 15) / 170), 1.8); });
+    trees.forEach((t) => { t.bx = t.lx; t.bz = t.lz; t.near = Math.pow(Math.max(0.04, 1 - (30 - t.z - 15) / 170), 1.8); t.clear = false; t.cd = rnd(); });
 
     // ---------- shaders ----------
     const VS = `#version 300 es
@@ -210,7 +312,7 @@ void main(){
     const FS = `#version 300 es
 precision highp float;
 in vec3 vCol; in vec3 vNor; in vec3 vWorld; in float vLeaf; in float vH;
-uniform vec3 uEye; uniform vec3 uFog; uniform vec3 uSkyTop; uniform vec3 uSun; uniform vec3 uSunCol;
+uniform vec3 uEye; uniform vec3 uFog; uniform vec3 uSkyTop; uniform vec3 uSun; uniform vec3 uSunCol; uniform float uFogK;
 out vec4 o;
 void main(){
   vec3 n = normalize(vNor);
@@ -221,7 +323,7 @@ void main(){
   vec3 col = vCol * (amb + diff*uSunCol) + rim * uSunCol * vCol;
   col *= mix(0.7, 1.0, smoothstep(0.0, 0.55, vH + (1.0 - vLeaf)*0.3));
   float d = length(vWorld - uEye);
-  float f = 1.0 - exp(-pow(d*0.0062, 1.5));
+  float f = 1.0 - exp(-pow(d*0.0062*uFogK, 1.5));
   f *= mix(1.0, 0.85, clamp(vWorld.y/30.0, 0.0, 1.0));
   vec3 fogc = uFog;
   col = mix(col, fogc, clamp(f, 0.0, 1.0));
@@ -264,7 +366,7 @@ void main(){
     const prog = program(VS, FS);
     const sky = program(SKY_VS, SKY_FS);
     const U = {};
-    ['uVP', 'uTime', 'uFlutter', 'uEye', 'uFog', 'uSkyTop', 'uSun', 'uSunCol'].forEach((n) => { U[n] = gl.getUniformLocation(prog, n); });
+    ['uVP', 'uTime', 'uFlutter', 'uEye', 'uFog', 'uSkyTop', 'uSun', 'uSunCol', 'uFogK'].forEach((n) => { U[n] = gl.getUniformLocation(prog, n); });
     const SU = {};
     ['uRes', 'uHorizon', 'uFog', 'uSkyTop', 'uSunCol'].forEach((n) => { SU[n] = gl.getUniformLocation(sky, n); });
 
@@ -286,7 +388,7 @@ void main(){
     trees.forEach((t, i) => { inst.set([t.x, t.z, t.H, t.W, t.tint[0], t.tint[1], t.tint[2], t.rot], i * 8); });
     const instBuf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, inst, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, inst, gl.DYNAMIC_DRAW);
     gl.enableVertexAttribArray(4); gl.vertexAttribPointer(4, 4, gl.FLOAT, false, 32, 0); gl.vertexAttribDivisor(4, 1);
     gl.enableVertexAttribArray(5); gl.vertexAttribPointer(5, 4, gl.FLOAT, false, 32, 16); gl.vertexAttribDivisor(5, 1);
     const bend = new Float32Array(NT * 4);
@@ -354,7 +456,8 @@ void main(){
     // ---------- sound: synthesised leaf rustle + wind whoosh ----------
     let audio = null;
     let soundOn = false;
-    const vol = () => Math.max(0, Math.min(1, opts.volume ?? 0.5));
+    let duckK = 1;   // turned down while a jukebox video is playing
+    const vol = () => Math.max(0, Math.min(1, opts.volume ?? 0.5)) * duckK;
     const initAudio = () => {
       if (audio) { if (audio.ctx.state === 'suspended') audio.ctx.resume(); return; }
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -420,6 +523,96 @@ void main(){
     let raf = 0, prev = performance.now(), time = 0;
     const scr = new Float32Array(6);
 
+    // ---------- transition: 0 = home view, 1 = bird's-eye view ----------
+    const view = { t: 0, to: 0, wait: 0, dur: 1, moving: false };
+    let arrived = null;
+    const easeIO = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+    const smooth = (a, b, x) => { const u = Math.min(1, Math.max(0, (x - a) / (b - a))); return u * u * (3 - 2 * u); };
+    const TOP_FOV = 50 * Math.PI / 180;
+    const EL0 = Math.atan2(30, 70), DIST0 = Math.hypot(30, 70);   // the home camera, seen from the glade
+    let gustT = -1;
+    let lastE = -1, clearDirty = true;
+    const panels = [];   // { el, rect: {x, y, w, h} on screen at the end, world: {x0, z0, x1, z1} }
+    const corners = new Float32Array(8);
+
+    // screen position in the final bird's-eye view -> spot on the ground
+    const toGround = (sx, sy) => {
+      const halfH = opts.topHeight * Math.tan(TOP_FOV / 2), halfW = halfH * (cw / ch);
+      return [GX + (sx / cw * 2 - 1) * halfW, GZ - (1 - sy / ch * 2) * halfH];
+    };
+    const setLayout = (list) => {
+      resize();
+      panels.length = 0;
+      list.forEach((p) => {
+        const a = toGround(p.rect.x, p.rect.y), b = toGround(p.rect.x + p.rect.w, p.rect.y + p.rect.h);
+        panels.push({ el: p.el, rect: p.rect, world: { x0: a[0], z0: a[1], x1: b[0], z1: b[1] }, shown: null });
+      });
+      // trees whose crown touches a clearing get blown away during the transition
+      for (let i = 0; i < NT; i++) {
+        const t = trees[i], r = t.W * 0.42 + 0.6;
+        t.clear = panels.some((p) => {
+          const dx = Math.max(p.world.x0 - t.x, 0, t.x - p.world.x1), dz = Math.max(p.world.z0 - t.z, 0, t.z - p.world.z1);
+          return dx * dx + dz * dz < r * r;
+        });
+      }
+      clearDirty = true;
+    };
+    const go = (target, o) => {
+      o = o || {};
+      view.to = target;
+      view.wait = o.wait || 0;
+      view.dur = Math.max(o.dur != null ? o.dur : (opts.transition || 2.6), 0.0001);
+      if (o.instant) { view.t = target; view.wait = 0; }
+      view.moving = true;
+    };
+    // a gust of wind sweeping across the screen, left to right
+    const gust = () => { gustT = 0; };
+
+    // CSS matrix that lays a w x h box onto 4 screen points (top-left, top-right, bottom-right, bottom-left)
+    const quadMatrix = (w, h, q) => {
+      const x0 = q[0], y0 = q[1], x1 = q[2], y1 = q[3], x2 = q[4], y2 = q[5], x3 = q[6], y3 = q[7];
+      const sx = x0 - x1 + x2 - x3, sy = y0 - y1 + y2 - y3;
+      let a, b, c, d, e, f, g, k;
+      if (Math.abs(sx) < 1e-6 && Math.abs(sy) < 1e-6) { a = x1 - x0; b = x2 - x1; c = x0; d = y1 - y0; e = y2 - y1; f = y0; g = 0; k = 0; }
+      else {
+        const dx1 = x1 - x2, dx2 = x3 - x2, dy1 = y1 - y2, dy2 = y3 - y2;
+        const den = dx1 * dy2 - dx2 * dy1 || 1e-9;
+        g = (sx * dy2 - dx2 * sy) / den; k = (dx1 * sy - sx * dy1) / den;
+        a = x1 - x0 + g * x1; b = x3 - x0 + k * x3; c = x0;
+        d = y1 - y0 + g * y1; e = y3 - y0 + k * y3; f = y0;
+      }
+      a /= w; d /= w; g /= w; b /= h; e /= h; k /= h;
+      return 'matrix3d(' + [a, d, 0, g, b, e, 0, k, 0, 0, 1, 0, c, f, 0, 1].join(',') + ')';
+    };
+    const projectTo = (m, x, y, z, out, o) => {
+      const w = m[3] * x + m[7] * y + m[11] * z + m[15];
+      if (w <= 0.01) return false;
+      out[o] = ((m[0] * x + m[4] * y + m[8] * z + m[12]) / w * 0.5 + 0.5) * cw;
+      out[o + 1] = (0.5 - (m[1] * x + m[5] * y + m[9] * z + m[13]) / w * 0.5) * ch;
+      return true;
+    };
+    const updatePanels = (VP, e) => {
+      const op = smooth(0.3, 0.8, e);
+      for (const p of panels) {
+        const st = p.el.style;
+        if (op <= 0.001) {
+          if (p.shown !== false) { st.opacity = '0'; st.visibility = 'hidden'; p.shown = false; }
+          continue;
+        }
+        st.width = p.rect.w + 'px'; st.height = p.rect.h + 'px';
+        if (e >= 0.9999) {
+          st.transform = 'translate(' + p.rect.x + 'px,' + p.rect.y + 'px)';
+        } else {
+          const W = p.world;
+          const ok = projectTo(VP, W.x0, 0, W.z0, corners, 0) && projectTo(VP, W.x1, 0, W.z0, corners, 2) &&
+                     projectTo(VP, W.x1, 0, W.z1, corners, 4) && projectTo(VP, W.x0, 0, W.z1, corners, 6);
+          if (!ok) { st.visibility = 'hidden'; p.shown = false; continue; }
+          st.transform = quadMatrix(p.rect.w, p.rect.h, corners);
+        }
+        st.opacity = op.toFixed(3); st.visibility = 'visible'; p.shown = true;
+      }
+    };
+
     const resize = () => {
       const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
       const d = Math.min(window.devicePixelRatio || 1, 2);
@@ -431,6 +624,7 @@ void main(){
     };
 
     const onMove = (e) => {
+      if (e.target && e.target.closest && e.target.closest('.panel')) { last = null; return; }
       const rect = canvas.getBoundingClientRect();
       const sc = (canvas.clientWidth || 1) / (rect.width || 1);
       const x = (e.clientX - rect.left) * sc, y = (e.clientY - rect.top) * sc;
@@ -473,21 +667,54 @@ void main(){
 
     const frame = (now) => {
       raf = requestAnimationFrame(frame);
-      const dt = Math.min(Math.max((now - prev) / 1000, 0), 1 / 30);
+      const rawDt = Math.min(Math.max((now - prev) / 1000, 0), 0.25);   // real time, for the transition
+      const dt = Math.min(rawDt, 1 / 30);
       prev = now;
       time += dt;
       resize();
 
       // high camera looking down over the forest, with gentle parallax
+      // advance the transition
+      if (view.moving) {
+        if (view.wait > 0) view.wait -= rawDt;
+        else {
+          const step = rawDt / view.dur;
+          view.t = view.t < view.to ? Math.min(view.to, view.t + step) : Math.max(view.to, view.t - step);
+          if (view.t === view.to) { view.moving = false; arrived = view.to; }
+        }
+      }
+      const e = easeIO(view.t);
+      const k = 1 - e;   // pointer parallax fades out in the bird's-eye view
+
       const ease = Math.min(1, dt * 2);
       cam.x += (pointer.nx - cam.x) * ease;
       cam.y += (pointer.ny - cam.y) * ease;
       const aspect = cw / ch;
-      const fov = (aspect < 1 ? 66 : 50) * Math.PI / 180;
-      const eye = [cam.x * 1.6, 30 - cam.y * 1.0, 30];
-      const VP = mul(perspective(fov, aspect, 0.5, 700), lookAt(eye, [cam.x * 0.5, 0, -40], [0, 1, 0]));
+      // orbit up around the glade: from the low home angle to straight down
+      const el = EL0 + (Math.PI / 2 - EL0) * e;
+      const dist = DIST0 + (opts.topHeight - DIST0) * e;
+      const target = [cam.x * 0.5 * k, 0, GZ];
+      const eye = [target[0] + cam.x * 1.1 * k, dist * Math.sin(el) - cam.y * k, GZ + dist * Math.cos(el)];
+      const upv = [0, Math.cos(el), -Math.sin(el)];
+      const fov0 = (aspect < 1 ? 66 : 50) * Math.PI / 180;
+      const fov = fov0 + (TOP_FOV - fov0) * e;
+      const VP = mul(perspective(fov, aspect, 0.5, 700), lookAt(eye, target, upv));
       let horizon = 1.2;
       if (project(VP, eye[0], 0, eye[2] - 3000, 0)) horizon = 1 - scr[1] / ch;
+
+      if (gustT >= 0) {
+        gustT += rawDt;
+        const g = gustT / 0.9;
+        if (g < 1) {
+          const xs = g * cw * 1.3 - cw * 0.15;
+          for (let n = 0; n < 4; n++) {
+            puffs.push({ x: xs + (Math.random() - 0.5) * 80, y: (0.15 + Math.random() * 0.85) * ch, vx: 700, vy: -70,
+                         ux: 0.99, uy: -0.1, spd: 1800, r: 70, life: 1 });
+          }
+          if (puffs.length > 90) puffs.splice(0, puffs.length - 90);
+          pointer.speed = Math.max(pointer.speed, 2600);
+        } else gustT = -1;
+      }
 
       for (let i = puffs.length - 1; i >= 0; i--) {
         const p = puffs[i];
@@ -521,6 +748,7 @@ void main(){
           }
         }
         let Fx = fx * K, Fz = fy * K;
+        if (t.clear && e > 0.02 && e < 0.85) Fx += 6 * (opts.windStrength ?? 1);   // blown out of the clearing
         const fm = Math.hypot(Fx, Fz);
         if (fm > 22) { Fx *= 22 / fm; Fz *= 22 / fm; }
 
@@ -543,6 +771,19 @@ void main(){
         bend[i * 4 + 1] = t.bz;
         bend[i * 4 + 2] = t.ag;
         bend[i * 4 + 3] = t.phase;
+      }
+
+      // shrink the trees that stand in a clearing
+      if (clearDirty || Math.abs(e - lastE) > 1e-4) {
+        for (let i = 0; i < NT; i++) {
+          const t = trees[i];
+          const s = t.clear ? 1 - smooth(0.08 + t.cd * 0.25, 0.5 + t.cd * 0.25, e) : 1;
+          inst[i * 8 + 2] = t.H * s;
+          inst[i * 8 + 3] = t.W * s;
+        }
+        gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, inst);
+        lastE = e; clearDirty = false;
       }
 
       // drive the sound from how much of the forest is being stirred
@@ -587,6 +828,7 @@ void main(){
       gl.uniform3fv(U.uSkyTop, SKYTOP);
       gl.uniform3fv(U.uSun, SUN);
       gl.uniform3fv(U.uSunCol, SUNCOL);
+      gl.uniform1f(U.uFogK, 1 - 0.45 * e);
 
       gl.bindVertexArray(groundVao);
       gl.vertexAttrib4f(4, 0, 0, 1, 1);
@@ -599,6 +841,10 @@ void main(){
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, bend);
       gl.drawArraysInstanced(gl.TRIANGLES, 0, treeVerts, NT);
       gl.bindVertexArray(null);
+
+      if (panels.length) updatePanels(VP, e);
+      // tell the page we've arrived (after the panels are visible, so focus can move into them)
+      if (arrived !== null) { const a = arrived; arrived = null; if (opts.onArrive) opts.onArrive(a); }
     };
     resize();
     raf = requestAnimationFrame(frame);
@@ -621,8 +867,13 @@ void main(){
     };
 
     return {
+      supported: true,
       setSound,
       hoverSound,
+      setLayout,
+      go,
+      gust,
+      duck(on) { duckK = on ? 0.15 : 1; if (audio && soundOn) audio.master.gain.setTargetAtTime(vol(), audio.ctx.currentTime, 0.3); },
       stop() {
         cancelAnimationFrame(raf);
         root.removeEventListener('pointermove', onMove);
@@ -635,7 +886,114 @@ void main(){
     };
   }
 
+  // ---------- page: home <-> jukebox ----------
+  var hero = document.getElementById('hero');
+  var intro = document.getElementById('intro');
+  var stage = document.getElementById('stage');
+  var cta = document.querySelector('.cta');
+  var title = document.getElementById('title');
+  var video = document.getElementById('video');
+  var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var state = 'home';
+  var anims = [];
+
+  // split the title into letters so they can blow away one by one
+  var letters = [];
+  (function () {
+    var text = title.textContent.trim();
+    title.setAttribute('aria-label', text);
+    title.textContent = '';
+    text.split(' ').forEach(function (word, i) {
+      if (i) title.appendChild(document.createTextNode(' '));
+      var w = document.createElement('span');
+      w.className = 'word'; w.setAttribute('aria-hidden', 'true');
+      Array.from(word).forEach(function (c) {
+        var s = document.createElement('span'); s.className = 'ch'; s.textContent = c;
+        w.appendChild(s); letters.push(s);
+      });
+      title.appendChild(w);
+    });
+  })();
+
+  opts.onArrive = function (where) {
+    if (where === 1 && state === 'listen') {
+      stage.inert = false;
+      document.getElementById('track-title').focus({ preventScroll: true });
+    }
+    if (where === 0 && state === 'home') {
+      intro.inert = false;
+      cta.focus({ preventScroll: true });
+    }
+  };
   var forest = startForest(document.getElementById('forest'), opts);
+
+  // where each panel ends up = the invisible layout grid; tell the forest so it can clear space
+  function measure() {
+    var h = hero.getBoundingClientRect();
+    var list = Array.prototype.map.call(document.querySelectorAll('.layout [data-panel]'), function (slot) {
+      var r = slot.getBoundingClientRect();
+      return { el: document.getElementById('panel-' + slot.dataset.panel), rect: { x: r.left - h.left, y: r.top - h.top, w: r.width, h: r.height } };
+    });
+    forest.setLayout(list);
+  }
+
+  function blowAway(instant) {
+    anims.forEach(function (a) { a.cancel(); });
+    anims = [];
+    letters.concat([cta]).forEach(function (el, i) {
+      var far = 0.45 + Math.random() * 0.6;
+      var frames = reduce ? [{ opacity: 1 }, { opacity: 0 }] : [
+        { transform: 'translate(0px, 0px) rotate(0deg) scale(1)', opacity: 1, filter: 'blur(0px)' },
+        { transform: 'translate(' + Math.round(window.innerWidth * far) + 'px, ' + Math.round(-40 - Math.random() * 220) + 'px) rotate(' +
+                     Math.round(Math.random() * 140 - 40) + 'deg) scale(' + (0.4 + Math.random() * 0.4).toFixed(2) + ')', opacity: 0, filter: 'blur(8px)' }
+      ];
+      anims.push(el.animate(frames, {
+        duration: instant ? 0 : (reduce ? 250 : 1000 + Math.random() * 400),
+        delay: instant || reduce ? 0 : i * 38 + (el === cta ? 120 : 0),
+        easing: 'cubic-bezier(.55,0,.8,.25)', fill: 'forwards'
+      }));
+    });
+  }
+
+  function goListen(push, instant) {
+    if (state === 'listen') return;
+    state = 'listen';
+    if (push) history.pushState({ view: 'listen' }, '', '#listen');
+    intro.inert = true;
+    measure();
+    blowAway(instant);
+    if (!instant && !reduce) forest.gust();
+    forest.go(1, { wait: instant || reduce ? 0 : 0.35, dur: reduce ? 0.0001 : undefined, instant: instant });
+  }
+
+  function goHome(instant) {
+    if (state === 'home') return;
+    state = 'home';
+    stage.inert = true;
+    if (!video.paused) video.pause();
+    forest.go(0, { dur: reduce || instant ? 0.0001 : 2.0, instant: instant });
+    var back = function () { anims.forEach(function (a) { a.reverse(); }); };
+    if (instant || reduce) back(); else setTimeout(back, 1100);
+  }
+
+  if (forest.supported) {
+    cta.addEventListener('click', function (e) { e.preventDefault(); goListen(true, false); });
+    document.getElementById('back').addEventListener('click', function () {
+      if (history.state && history.state.view === 'listen') history.back(); else goHome(false);
+    });
+    window.addEventListener('popstate', function () {
+      if (location.hash === '#listen') goListen(false, false); else goHome(false);
+    });
+    new ResizeObserver(function () { measure(); }).observe(hero);
+    measure();
+    // links like index.html#listen or index.html?track=gmao_t2m open the jukebox straight away
+    if (location.hash === '#listen' || new URLSearchParams(location.search).get('track')) goListen(false, true);
+  }
+
+  // turn the forest down while a track plays
+  video.addEventListener('play', function () { forest.duck(true); });
+  video.addEventListener('pause', function () { forest.duck(false); });
+
   var btn = document.getElementById('sound');
   btn.addEventListener('click', function () {
     var on = btn.getAttribute('aria-pressed') !== 'true';
@@ -643,8 +1001,10 @@ void main(){
     btn.querySelector('span').textContent = on ? 'Sound on' : 'Sound off';
     forest.setSound(on);
   });
-  document.querySelector('.cta').addEventListener('mouseenter', function () { forest.hoverSound(); });
+  cta.addEventListener('mouseenter', function () { forest.hoverSound(); });
 })();
 </script>
+<!-- the jukebox logic (track list, video, captions, screen-reader announcements) -->
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
